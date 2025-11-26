@@ -4,33 +4,7 @@ import Transferencia from './components/Transferencia'; // Importamos el nuevo c
 
 function App() {
   // Estado para almacenar la lista de transferencias
-  const [transferencias, setTransferencias] = useState([
-    {
-      id: 135301513548,
-      date_approved: '2025-11-26T07:56:01.000-04:00',
-      status: 'approved',
-      transaction_amount: 1000,
-      transaction_details: {
-        net_received_amount: 1000,
-      },
-      fee_details: [
-        {
-          type: 'mercadopago_fee',
-          amount: 0,
-        },
-      ],
-      payment_method_id: 'cvu',
-      description: 'Bank Transfer',
-      payer: {
-        email: 'luksbenitez01@hotmail.com',
-        id: 270641979,
-        identification: {
-          type: 'CUIL',
-          number: '20403144062',
-        },
-      },
-    },
-  ]);
+  const [transferencias, setTransferencias] = useState([]);
   // Estado para manejar la carga de datos
   const [loading, setLoading] = useState(true);
   // Estado para manejar posibles errores
