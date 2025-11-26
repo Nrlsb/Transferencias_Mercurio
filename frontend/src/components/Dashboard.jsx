@@ -1,27 +1,36 @@
 import { useState, useEffect } from 'react';
-import '../App.css';
+import { supabase } from '../supabaseClient';
 import Transferencia from './Transferencia';
-import { supabase } from '../supabaseClient'; // Importamos supabase para el logout
+import {
+  AppBar,
+  Box,
+  Toolbar,
+  Typography,
+  Button,
+  Container,
+  Grid,
+  TextField,
+  Paper,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SearchIcon from '@mui/icons-material/Search';
 
 function Dashboard({ session }) {
-  // Estado para almacenar la lista de transferencias
   const [transferencias, setTransferencias] = useState([]);
-  // Estado para manejar la carga de datos
   const [loading, setLoading] = useState(true);
-  // Estado para manejar posibles errores
   const [error, setError] = useState(null);
 
-  // --- Estados para los filtros ---
+  // Estados para filtros
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState('');
 
-  // useEffect se ejecuta para buscar los datos
   const fetchTransferencias = async (queryParams = '') => {
     setLoading(true);
     setError(null);
 
-    // El componente Dashboard ya recibe la 'session' como prop.
     if (!session?.access_token) {
         setError("No hay una sesión de usuario válida. Por favor, inicie sesión de nuevo.");
         setLoading(false);
@@ -31,7 +40,6 @@ function Dashboard({ session }) {
     try {
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias${queryParams}`;
       
-      // Añadimos el token de la sesión a los encabezados de la solicitud
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -44,88 +52,151 @@ function Dashboard({ session }) {
       }
       
       const data = await response.json();
-      setTransferencias(data); // Guardamos los datos en el estado
+      setTransferencias(data);
     } catch (e) {
-      setError(e.message); // Guardamos el mensaje de error
+      setError(e.message);
     } finally {
-      setLoading(false); // Dejamos de cargar, ya sea con éxito o con error
+      setLoading(false);
     }
   };
 
-  // Cargar los datos iniciales cuando el componente se monta
   useEffect(() => {
     fetchTransferencias();
-  }, []); // El array vacío [] significa que este efecto se ejecuta solo una vez
+  }, []);
 
-  // --- Función para manejar el filtrado ---
   const handleFilter = (e) => {
-    e.preventDefault(); // Evitamos que el formulario recargue la página
+    e.preventDefault();
     const params = new URLSearchParams();
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
     if (fechaFilter) {
-      // Convertir la fecha local del input a un string ISO (UTC)
       const utcDateString = new Date(fechaFilter).toISOString();
       params.append('fecha', utcDateString);
     }
     
     fetchTransferencias(`?${params.toString()}`);
   };
+
+  const handleLogout = () => {
+    supabase.auth.signOut();
+  };
   
   return (
-    <div className="App">
-      <header className="App-header">
-        <div className="header-user-info">
-          <span>Conectado como: <strong>{session.user.email}</strong></span>
-          <button className="button" onClick={() => supabase.auth.signOut()}>
-            Cerrar Sesión
-          </button>
-        </div>
-        <h1>Visualizador de Transferencias</h1>
-        <p>Últimos pagos recibidos de Mercado Pago</p>
-      </header>
+    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* --- Header / AppBar --- */}
+      <AppBar position="static" color="primary" enableColorOnDark>
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Visualizador de Transferencias
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="caption" sx={{ display: { xs: 'none', sm: 'block' } }}>
+              {session.user.email}
+            </Typography>
+            <Button 
+              color="inherit" 
+              onClick={handleLogout} 
+              startIcon={<LogoutIcon />}
+            >
+              Salir
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
 
-      {/* --- Formulario de Filtros --- */}
-      <form className="filter-form" onSubmit={handleFilter}>
-        <div className="filter-inputs">
-          <input
-            type="number"
-            placeholder="Monto exacto"
-            value={montoFilter}
-            onChange={(e) => setMontoFilter(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="DNI del pagador"
-            value={dniFilter}
-            onChange={(e) => setDniFilter(e.target.value)}
-          />
-          <input
-            type="datetime-local"
-            value={fechaFilter}
-            onChange={(e) => setFechaFilter(e.target.value)}
-          />
-        </div>
-        <button type="submit">Filtrar</button>
-      </form>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        
+        {/* --- Formulario de Filtros --- */}
+        <Paper sx={{ p: 3, mb: 4 }} elevation={3}>
+          <Typography variant="h6" gutterBottom color="primary">
+            Filtros de Búsqueda
+          </Typography>
+          <Box component="form" onSubmit={handleFilter}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  label="Monto Exacto"
+                  type="number"
+                  variant="outlined"
+                  value={montoFilter}
+                  onChange={(e) => setMontoFilter(e.target.value)}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  label="DNI del Pagador"
+                  type="text"
+                  variant="outlined"
+                  value={dniFilter}
+                  onChange={(e) => setDniFilter(e.target.value)}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  fullWidth
+                  label="Fecha y Hora"
+                  type="datetime-local"
+                  variant="outlined"
+                  value={fechaFilter}
+                  onChange={(e) => setFechaFilter(e.target.value)}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={3}>
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  fullWidth 
+                  startIcon={<SearchIcon />}
+                  size="large"
+                >
+                  Filtrar
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
 
-      <main>
-        {loading && <p>Cargando transferencias...</p>}
-        {error && <p>Error al cargar los datos: {error}</p>}
-        {!loading && !error && (
-          <div className="transferencias-list">
-            {transferencias.length > 0 ? (
-              transferencias.map(transferencia => (
-                // Corregimos la key a id_pago
-                <Transferencia key={transferencia.id_pago} transferencia={transferencia} />
-              ))
-            ) : (
-              <p>No se encontraron transferencias con los filtros aplicados.</p>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
+        {/* --- Área de Contenido --- */}
+        <Box>
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+          
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          {!loading && !error && (
+            <Grid container spacing={3}>
+              {transferencias.length > 0 ? (
+                transferencias.map(transferencia => (
+                  <Grid item xs={12} key={transferencia.id_pago}>
+                    <Transferencia transferencia={transferencia} />
+                  </Grid>
+                ))
+              ) : (
+                <Grid item xs={12}>
+                  <Alert severity="info">No se encontraron transferencias con los filtros aplicados.</Alert>
+                </Grid>
+              )}
+            </Grid>
+          )}
+        </Box>
+
+      </Container>
+    </Box>
   );
 }
 

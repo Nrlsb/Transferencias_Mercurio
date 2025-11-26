@@ -1,32 +1,4 @@
-.transferencia-card {
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  font-family: monospace;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.transferencia-card h2 {
-  font-size: 1.2em;
-  margin-bottom: 12px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 10px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-}
-
-.info-item span {
-  font-weight: bold;
-  margin-right: 8px;
-}
+/* Archivo vaciado intencionalmente.
+   Los estilos de la tarjeta ahora son manejados por el sistema de temas de Material UI (MUI)
+   dentro de Transferencia.jsx para asegurar consistencia.
+*/
