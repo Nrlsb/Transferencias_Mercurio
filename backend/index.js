@@ -39,17 +39,71 @@ app.get("/", (req, res) => {
 // Ruta para obtener todas las transferencias para el frontend
 app.get("/api/transferencias", async (req, res) => {
   console.log("🚚 Solicitud recibida en /api/transferencias");
+  const { monto, dni, fecha } = req.query;
+
   try {
+    // Contamos cuántos filtros se han proporcionado
+    const filterCount = [monto, dni, fecha].filter(Boolean).length;
+
+    // Si se proporcionan menos de 2 filtros, devolvemos un array vacío
+    if (filterCount < 2) {
+      return res.status(200).json([]);
+    }
+
+    // Obtenemos todos los datos, el filtrado se hará en memoria
     const { data, error } = await supabase
       .from('transferencias')
       .select('*')
-      .order('fecha_aprobado', { ascending: false }); // Ordenar por más reciente
+      .order('fecha_aprobado', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    res.status(200).json(data);
+    const resultados = data.filter(p => {
+      let matches = 0;
+
+      // Verificación de Monto
+      if (monto) {
+        const montoFloat = parseFloat(monto);
+        if (p.monto === montoFloat) {
+          matches++;
+        }
+      }
+
+      // Verificación de DNI
+      if (dni) {
+        const identification = p.datos_completos?.payer?.identification;
+        if (identification?.number?.includes(dni)) {
+          matches++;
+        }
+      }
+
+      // Verificación de Fecha y Hora
+      if (fecha) {
+        try {
+          const fechaFiltro = new Date(fecha);
+          if (isNaN(fechaFiltro.getTime())) throw new Error();
+
+          const diezMinutosEnMs = 10 * 60 * 1000;
+          const limiteInferior = new Date(fechaFiltro.getTime() - diezMinutosEnMs);
+          const limiteSuperior = new Date(fechaFiltro.getTime() + diezMinutosEnMs);
+          
+          const fechaPago = new Date(p.fecha_aprobado);
+          if (fechaPago >= limiteInferior && fechaPago <= limiteSuperior) {
+            matches++;
+          }
+        } catch {
+          // Si la fecha es inválida, simplemente no se cuenta como un match
+        }
+      }
+      
+      // La transferencia se incluye si cumple al menos 2 de los criterios
+      return matches >= 2;
+    });
+
+    res.status(200).json(resultados);
+
   } catch (error) {
     console.error("❌ Error al obtener transferencias de Supabase:", error.message);
     res.status(500).json({ error: "Error interno del servidor al consultar la base de datos." });
