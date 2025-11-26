@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Transferencia from './Transferencia';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   AppBar,
   Box,
@@ -31,6 +33,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
@@ -161,6 +164,82 @@ function Dashboard({ session, onLogout }) {
     } else if (tabValue === 1) {
         fetchTransferencias('?history=true');
     }
+  };
+
+  // Función para generar y descargar el PDF
+  const handleExportPDF = () => {
+    if (!transferencias || transferencias.length === 0) {
+        handleFeedback('No hay datos para exportar', 'warning');
+        return;
+    }
+
+    const doc = new jsPDF();
+
+    // Título del documento
+    doc.setFontSize(18);
+    doc.text('Reporte de Transferencias - Mercurio', 14, 22);
+
+    // Metadata del reporte
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const fechaReporte = new Date().toLocaleString();
+    doc.text(`Generado el: ${fechaReporte}`, 14, 28);
+    doc.text(`Generado por: ${session?.user?.email}`, 14, 33);
+    
+    if (isAdmin) {
+        let filtrosTexto = 'Filtros aplicados: ';
+        if (dateFromFilter) filtrosTexto += `Desde ${dateFromFilter} `;
+        if (dateToFilter) filtrosTexto += `Hasta ${dateToFilter} `;
+        if (adminUserFilter) filtrosTexto += `Usuario: ${adminUserFilter} `;
+        if (onlyClaimedFilter) filtrosTexto += '(Solo Reclamados) ';
+        if (filtrosTexto === 'Filtros aplicados: ') filtrosTexto += 'Ninguno (Todas las transferencias)';
+        
+        doc.text(filtrosTexto, 14, 38);
+    }
+
+    // Definición de Columnas
+    const tableColumn = ["ID Pago", "Fecha", "Monto", "Estado", "Pagador", "Reclamado Por"];
+    
+    // Mapeo de Datos
+    const tableRows = transferencias.map(t => {
+        const fechaFormatted = t.datos_completos?.date_approved 
+            ? new Date(t.datos_completos.date_approved).toLocaleDateString() + ' ' + new Date(t.datos_completos.date_approved).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            : 'N/A';
+
+        const montoFormatted = `$${(t.datos_completos?.transaction_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+        
+        // Traducción de estado
+        let estado = t.estado;
+        if (estado === 'approved') estado = 'Aprobado';
+        else if (estado === 'pending') estado = 'Pendiente';
+        else if (estado === 'rejected') estado = 'Rechazado';
+
+        const pagador = t.datos_completos?.payer?.email || 'Desconocido';
+        const reclamadoPor = t.usuarios?.email || (t.claimed_by ? 'ID: ' + t.claimed_by : 'No reclamado');
+
+        return [
+            t.id_pago,
+            fechaFormatted,
+            montoFormatted,
+            estado,
+            pagador,
+            reclamadoPor
+        ];
+    });
+
+    // Generación de la tabla con autoTable
+    autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [25, 118, 210] }, // Color primario #1976d2
+    });
+
+    // Guardar archivo
+    doc.save(`Mercurio_Reporte_${new Date().toISOString().split('T')[0]}.pdf`);
+    handleFeedback('PDF generado exitosamente', 'success');
   };
 
   const handleFeedback = (message, severity = 'success') => {
@@ -316,17 +395,36 @@ function Dashboard({ session, onLogout }) {
                             </Grid>
                         )}
 
-                        <Grid item xs={12} sm={6} md={isAdmin ? 3 : 3}>
-                            <Button 
-                            type="submit" 
-                            variant="contained" 
-                            disableElevation
-                            fullWidth 
-                            startIcon={<FilterListIcon />}
-                            sx={{ borderRadius: 20, height: '40px' }}
-                            >
-                            {isAdmin ? 'Buscar Global' : 'Filtrar'}
-                            </Button>
+                        <Grid item xs={12} sm={6} md={isAdmin ? 3 : 3} container spacing={1}>
+                            <Grid item xs={isAdmin ? 6 : 12}>
+                                <Button 
+                                type="submit" 
+                                variant="contained" 
+                                disableElevation
+                                fullWidth 
+                                startIcon={<FilterListIcon />}
+                                sx={{ borderRadius: 20, height: '40px' }}
+                                >
+                                {isAdmin ? 'Buscar' : 'Filtrar'}
+                                </Button>
+                            </Grid>
+                            
+                            {/* Botón de Exportar PDF (Solo Admin) */}
+                            {isAdmin && (
+                                <Grid item xs={6}>
+                                    <Button 
+                                        variant="outlined" 
+                                        color="secondary"
+                                        fullWidth 
+                                        onClick={handleExportPDF}
+                                        disabled={transferencias.length === 0}
+                                        startIcon={<PictureAsPdfIcon />}
+                                        sx={{ borderRadius: 20, height: '40px' }}
+                                    >
+                                        PDF
+                                    </Button>
+                                </Grid>
+                            )}
                         </Grid>
                     </Grid>
                 </Box>
