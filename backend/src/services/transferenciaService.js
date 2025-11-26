@@ -19,8 +19,10 @@ class TransferenciaService {
             throw new Error('El DNI debe tener al menos 8 números para realizar la búsqueda.');
         }
 
-        // Creamos un array seguro con los valores de los filtros
-        const activeFilters = [monto, dni, fecha].filter(val => val !== undefined && val !== null && val !== '');
+        // CORRECCIÓN AQUÍ: 
+        // Agregamos 'fechaDesde' al array para que cuente como filtro válido.
+        // Si viene fechaDesde o fechaHasta, significa que el usuario está filtrando por fecha.
+        const activeFilters = [monto, dni, fecha,SH, fechaDesde].filter(val => val !== undefined && val !== null && val !== '');
         
         // Mantenemos la regla: Mínimo 2 filtros para evitar scraping
         if (activeFilters.length < 2) return []; 
@@ -54,8 +56,7 @@ class TransferenciaService {
         query = query.eq('claimed_by', userId);
     } else {
         // Búsqueda Pública (Usuario Normal):
-        // CAMBIO: Solo transferencias NO reclamadas (claimed_by IS NULL).
-        // Antes permitía ver las propias con .or(), ahora restringimos estrictamente.
+        // Solo transferencias NO reclamadas (claimed_by IS NULL).
         query = query.is('claimed_by', null);
     }
 
@@ -71,12 +72,8 @@ class TransferenciaService {
     // 5. Lógica de Fechas (Mejorada para rangos de día completo)
     if (fechaDesde || fechaHasta) {
         if (fechaDesde) {
-            // Aseguramos inicio del día (00:00:00) local o UTC según input, aquí asumimos input YYYY-MM-DD
-            // Al crear new Date('2023-01-01'), JS asume UTC 00:00 si es ISO, o local si es formato corto.
-            // Para consistencia, agregamos la hora explícita si viene solo fecha.
+            // Aseguramos inicio del día (00:00:00) local o UTC según input
             const fromDate = new Date(fechaDesde);
-            // Si el input es 'date', viene YYYY-MM-DD. 
-            // Reseteamos a 00:00:00 para asegurar cobertura completa
             fromDate.setHours(0, 0, 0, 0);
             query = query.gte('fecha_aprobado', fromDate.toISOString());
         }
