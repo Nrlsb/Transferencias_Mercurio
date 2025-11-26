@@ -17,8 +17,8 @@ const Transferencia = ({ transferencia }) => {
     payer,
   } = datos_completos || {}; // Usamos un objeto vacío como fallback
 
-  // Formatear la fecha para que sea más legible
-  const formattedDate = date_approved ? new Date(date_approved).toLocaleString() : 'N/A';
+  // Formatear la fecha para que sea más legible, mostrando el tiempo en UTC
+  const formattedDate = date_approved ? new Date(date_approved).toUTCString() : 'N/A';
 
   return (
     <div className="transferencia-card">
