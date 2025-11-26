@@ -47,7 +47,11 @@ function App() {
     const params = new URLSearchParams();
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
-    if (fechaFilter) params.append('fecha', fechaFilter);
+    if (fechaFilter) {
+      // Convertir la fecha local del input a un string ISO (UTC)
+      const utcDateString = new Date(fechaFilter).toISOString();
+      params.append('fecha', utcDateString);
+    }
     
     fetchTransferencias(`?${params.toString()}`);
   };

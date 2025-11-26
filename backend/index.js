@@ -82,7 +82,7 @@ app.get("/api/transferencias", async (req, res) => {
       // Verificación de Fecha y Hora
       if (fecha) {
         try {
-          const fechaFiltro = new Date(fecha + 'Z'); // Forzar interpretación como UTC
+          const fechaFiltro = new Date(fecha);
           if (isNaN(fechaFiltro.getTime())) throw new Error();
 
           const diezMinutosEnMs = 10 * 60 * 1000;
