@@ -50,23 +50,28 @@ export default function Auth() {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Card sx={{ width: '100%', boxShadow: 3 }}>
+    // Usamos Box con flexbox para centrar perfectamente el contenido en toda la pantalla
+    <Box 
+      sx={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+        p: 2 // Padding para móviles
+      }}
+    >
+      <Container component="main" maxWidth="xs">
+        <Card sx={{ width: '100%', boxShadow: 4, borderRadius: 2 }}>
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 4 }}>
-            <Typography component="h1" variant="h5" align="center" gutterBottom>
-              Mercurio Transferencias
-            </Typography>
-            <Typography component="p" variant="body2" align="center" color="text.secondary">
-              Inicia sesión o regístrate para continuar
-            </Typography>
+            <Box sx={{ mb: 2, textAlign: 'center' }}>
+                <Typography component="h1" variant="h5" fontWeight="bold" color="primary" gutterBottom>
+                Mercurio Transferencias
+                </Typography>
+                <Typography component="p" variant="body2" color="text.secondary">
+                Inicia sesión o regístrate para continuar
+                </Typography>
+            </Box>
 
             {message.text && (
               <Alert severity={message.type === 'error' ? 'error' : 'success'}>
@@ -104,7 +109,8 @@ export default function Auth() {
                 type="submit"
                 fullWidth
                 variant="contained"
-                sx={{ mt: 3, mb: 2 }}
+                size="large"
+                sx={{ mt: 3, mb: 2, borderRadius: 2 }}
                 disabled={loading}
               >
                 {loading ? 'Cargando...' : 'Iniciar Sesión'}
@@ -116,13 +122,14 @@ export default function Auth() {
                 variant="outlined"
                 onClick={handleSignUp}
                 disabled={loading}
+                sx={{ borderRadius: 2 }}
               >
                 Registrarse
               </Button>
             </Box>
           </CardContent>
         </Card>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }

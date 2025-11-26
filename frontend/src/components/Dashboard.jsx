@@ -22,7 +22,6 @@ import {
   InputAdornment
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 function Dashboard({ session }) {
@@ -30,7 +29,6 @@ function Dashboard({ session }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Estados para filtros
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState('');
@@ -90,45 +88,50 @@ function Dashboard({ session }) {
   };
   
   return (
-    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* --- Header / AppBar Simple y Limpio --- */}
-      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#fff' }}>
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1976d2', fontWeight: 'bold' }}>
-            Mercurio Dashboard
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              {session.user.email}
+    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
+      {/* AppBar Full Width */}
+      <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
+        <Container maxWidth="xl">
+            <Toolbar disableGutters>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1976d2', fontWeight: 'bold' }}>
+                Mercurio Dashboard
             </Typography>
-            <Button 
-              color="primary" 
-              variant="outlined"
-              onClick={handleLogout} 
-              startIcon={<LogoutIcon />}
-              size="small"
-            >
-              Salir
-            </Button>
-          </Box>
-        </Toolbar>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                {session.user.email}
+                </Typography>
+                <Button 
+                color="primary" 
+                variant="outlined"
+                onClick={handleLogout} 
+                startIcon={<LogoutIcon />}
+                size="small"
+                sx={{ borderRadius: 20 }}
+                >
+                Salir
+                </Button>
+            </Box>
+            </Toolbar>
+        </Container>
       </AppBar>
 
+      {/* Contenido principal centrado pero responsivo */}
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: 'text.primary' }}>
             Historial de Transferencias
         </Typography>
 
-        {/* --- Filtros --- */}
-        <Paper elevation={0} sx={{ p: 2, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+        {/* Filtros */}
+        <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
           <Box component="form" onSubmit={handleFilter}>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   fullWidth
                   placeholder="Monto Exacto"
                   type="number"
+                  label="Monto"
                   variant="outlined"
                   value={montoFilter}
                   onChange={(e) => setMontoFilter(e.target.value)}
@@ -138,10 +141,11 @@ function Dashboard({ session }) {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   fullWidth
-                  placeholder="DNI del Pagador"
+                  placeholder="DNI"
+                  label="DNI del Pagador"
                   type="text"
                   variant="outlined"
                   value={dniFilter}
@@ -149,7 +153,7 @@ function Dashboard({ session }) {
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   fullWidth
                   type="datetime-local"
@@ -159,22 +163,23 @@ function Dashboard({ session }) {
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <Button 
                   type="submit" 
                   variant="contained" 
                   disableElevation
                   fullWidth 
                   startIcon={<FilterListIcon />}
+                  sx={{ borderRadius: 20, height: '40px' }}
                 >
-                  Filtrar Resultados
+                  Filtrar
                 </Button>
               </Grid>
             </Grid>
           </Box>
         </Paper>
 
-        {/* --- Área de Contenido (Tabla) --- */}
+        {/* Tabla */}
         <Box>
           {loading && (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -189,36 +194,38 @@ function Dashboard({ session }) {
           )}
 
           {!loading && !error && (
-            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
-              <Table sx={{ minWidth: 650 }} aria-label="tabla de transferencias">
-                <TableHead sx={{ bgcolor: '#fafafa' }}>
-                  <TableRow>
-                    <TableCell>ID Transacción</TableCell>
-                    <TableCell>Descripción</TableCell>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Pagador</TableCell>
-                    <TableCell>Estado</TableCell>
-                    <TableCell align="right">Monto (ARS)</TableCell>
-                    <TableCell align="center">Acción</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {transferencias.length > 0 ? (
-                    transferencias.map(transferencia => (
-                      <Transferencia key={transferencia.id_pago} transferencia={transferencia} />
-                    ))
-                  ) : (
+            <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                <TableContainer sx={{ maxHeight: 600 }}>
+                <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
+                    <TableHead>
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                        <Typography variant="body1" color="text.secondary">
-                            No se encontraron transferencias con los filtros aplicados.
-                        </Typography>
-                      </TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID Transacción</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
+                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="center">Acción</TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                    {transferencias.length > 0 ? (
+                        transferencias.map(transferencia => (
+                        <Transferencia key={transferencia.id_pago} transferencia={transferencia} />
+                        ))
+                    ) : (
+                        <TableRow>
+                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                            <Typography variant="body1" color="text.secondary">
+                                No se encontraron transferencias con los filtros aplicados.
+                            </Typography>
+                        </TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+                </TableContainer>
+            </Paper>
           )}
         </Box>
 
