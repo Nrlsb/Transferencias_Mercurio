@@ -8,7 +8,7 @@ class TransferenciaService {
    * - Si history=false: Exige filtros.
    */
   async getTransferencias(userId, filters = {}) {
-    const { monto, dni, fecha, history } = filters || {}; // Protección si filters es undefined
+    const { monto, dni, fecha, history } = filters || {};
     const isHistoryMode = history === 'true';
 
     // 1. Validación de reglas de negocio para Búsqueda Pública
@@ -37,8 +37,11 @@ class TransferenciaService {
     }
 
     if (dni) {
-        // Búsqueda dentro del JSONB
-        query = query.filter('datos_completos->payer->identification->number', 'ilike', `%${dni}%`);
+        // CORRECCIÓN CRÍTICA AQUÍ:
+        // Usamos ->> en lugar de -> para 'number'.
+        // ->  devuelve JSONB (falla con ilike)
+        // ->> devuelve TEXT (funciona con ilike)
+        query = query.filter('datos_completos->payer->identification->>number', 'ilike', `%${dni}%`);
     }
 
     if (fecha) {
@@ -64,7 +67,7 @@ class TransferenciaService {
         throw new Error('Error al consultar la base de datos');
     }
 
-    // Retornamos array vacío si data es null/undefined para evitar errores en .length del frontend/backend
+    // Retornamos array vacío si data es null/undefined
     return data || [];
   }
 
@@ -83,7 +86,6 @@ class TransferenciaService {
 
     // Validación segura de data
     if (!data || data.length === 0) {
-        // Verificamos propiedad para mensaje de error amigable
         const { data: checkOwner } = await supabase
             .from('transferencias')
             .select('claimed_by')
