@@ -1,19 +1,35 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Button, TextField, Card, CardContent, Typography, Container, Box, CircularProgress } from '@mui/material';
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      alert('¡Revisa tu correo para el enlace de inicio de sesión!');
+      // No se necesita alerta, el listener onAuthStateChange en App.jsx se encargará del resto.
+    } catch (error) {
+      alert(error.error_description || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      // Por defecto, Supabase requiere confirmación por email para los nuevos registros.
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+      alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta.');
     } catch (error) {
       alert(error.error_description || error.message);
     } finally {
@@ -22,49 +38,52 @@ export default function Auth() {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Card sx={{ minWidth: 275, width: '100%', mt: 3 }}>
-          <CardContent>
-            <Typography variant="h5" component="h1" gutterBottom textAlign="center">
-              Autenticación
-            </Typography>
-            <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 3 }}>
-              Inicia sesión con tu correo electrónico
-            </Typography>
-            <Box component="form" onSubmit={handleLogin} noValidate sx={{ mt: 1 }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Correo electrónico"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-                disabled={loading}
-              >
-                {loading ? <CircularProgress size={24} /> : 'Enviar enlace mágico'}
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-    </Container>
+    <div className="row flex-center">
+      <div className="col-6 form-widget" aria-live="polite">
+        <h1 className="header">Autenticación con Contraseña</h1>
+        <p className="description">Inicia sesión o regístrate con tu correo y contraseña.</p>
+        
+        {/* El formulario principal se asocia con el inicio de sesión */}
+        <form onSubmit={handleLogin}>
+          <div>
+            <label htmlFor="email">Correo electrónico</label>
+            <input
+              id="email"
+              className="inputField"
+              type="email"
+              placeholder="Tu correo"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="password">Contraseña</label>
+            <input
+              id="password"
+              className="inputField"
+              type="password"
+              placeholder="Tu contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ paddingTop: '1rem' }}>
+            <button type="submit" className="button block" aria-live="polite" disabled={loading}>
+              {loading ? 'Cargando...' : 'Iniciar Sesión'}
+            </button>
+          </div>
+        </form>
+        
+        {/* El botón de registro tiene su propio manejador de eventos */}
+        <div style={{ paddingTop: '0.5rem' }}>
+            <button type="button" className="button block secondary" onClick={handleSignUp} disabled={loading}>
+                {loading ? '...' : 'Registrarse'}
+            </button>
+        </div>
+
+      </div>
+    </div>
   );
 }
