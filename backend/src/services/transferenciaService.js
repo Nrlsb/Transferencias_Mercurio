@@ -50,10 +50,13 @@ class TransferenciaService {
         }
 
     } else if (isHistoryMode) {
+        // Historial: Solo lo que reclamó el usuario
         query = query.eq('claimed_by', userId);
     } else {
-        // Usuario normal buscando: Ve libres O suyas
-        query = query.or(`claimed_by.is.null,claimed_by.eq.${userId}`);
+        // Búsqueda Pública (Usuario Normal):
+        // CAMBIO: Solo transferencias NO reclamadas (claimed_by IS NULL).
+        // Antes permitía ver las propias con .or(), ahora restringimos estrictamente.
+        query = query.is('claimed_by', null);
     }
 
     // 4. Filtros DB Nativos (Comunes)
