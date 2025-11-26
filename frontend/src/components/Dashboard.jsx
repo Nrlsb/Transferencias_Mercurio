@@ -21,12 +21,14 @@ import {
   InputAdornment,
   Snackbar,
   Tabs,
-  Tab
+  Tab,
+  Chip
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
@@ -45,16 +47,25 @@ function Dashboard({ session, onLogout }) {
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
+  // Verificamos si es admin
+  const isAdmin = session?.user?.is_admin === true;
+
   useEffect(() => {
-    if (tabValue === 1) {
-        // Si vamos a la pestaña Historial, cargamos datos inmediatamente
-        fetchTransferencias('?history=true');
+    // Si es admin, cargamos todo automáticamente al iniciar (comportamiento de admin)
+    // Si no, respetamos la lógica de tabs
+    if (isAdmin) {
+        fetchTransferencias();
     } else {
-        // Si volvemos a Búsqueda, limpiamos la tabla si no había búsqueda previa
-        setTransferencias([]);
-        setFiltersApplied(false);
+        if (tabValue === 1) {
+            // Si vamos a la pestaña Historial, cargamos datos inmediatamente
+            fetchTransferencias('?history=true');
+        } else {
+            // Si volvemos a Búsqueda, limpiamos la tabla si no había búsqueda previa
+            setTransferencias([]);
+            setFiltersApplied(false);
+        }
     }
-  }, [tabValue]);
+  }, [tabValue, isAdmin]); // isAdmin agregado para reaccionar al rol
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -100,7 +111,8 @@ function Dashboard({ session, onLogout }) {
   const handleSearchSubmit = (e) => {
     if(e) e.preventDefault();
     
-    if (tabValue === 0) {
+    // Si NO es admin, validamos filtros mínimos
+    if (!isAdmin && tabValue === 0) {
         const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
             setError("Por favor, ingrese al menos 2 criterios de búsqueda para seguridad.");
@@ -117,14 +129,15 @@ function Dashboard({ session, onLogout }) {
       params.append('fecha', utcDateString);
     }
     
-    if (tabValue === 1) params.append('history', 'true');
+    if (tabValue === 1 && !isAdmin) params.append('history', 'true');
 
     fetchTransferencias(`?${params.toString()}`);
   };
 
   const handleTransferenciaClaimed = () => {
-    // Recargar datos según la pestaña activa
-    if (tabValue === 0 && filtersApplied) {
+    if (isAdmin) {
+        fetchTransferencias(); // Admin recarga todo
+    } else if (tabValue === 0 && filtersApplied) {
         handleSearchSubmit(null);
     } else if (tabValue === 1) {
         fetchTransferencias('?history=true');
@@ -142,8 +155,9 @@ function Dashboard({ session, onLogout }) {
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
         <Container maxWidth="xl">
             <Toolbar disableGutters>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1976d2', fontWeight: 'bold' }}>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1976d2', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                 Mercurio Dashboard
+                {isAdmin && <Chip icon={<AdminPanelSettingsIcon />} label="ADMIN MODE" color="error" size="small" />}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
@@ -166,17 +180,22 @@ function Dashboard({ session, onLogout }) {
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
-                <Tab icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />
-                <Tab icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
-            </Tabs>
-        </Paper>
+        {/* Los Admins no necesitan Tabs de Buscar/Historial, ven todo en una vista global. Pero si quieres mantenerlas, puedes.
+            Para simplificar y dar poder, ocultamos tabs para Admin y mostramos filtros globales. */}
+        {!isAdmin && (
+            <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
+                <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
+                    <Tab icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />
+                    <Tab icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
+                </Tabs>
+            </Paper>
+        )}
 
-        {tabValue === 0 && (
+        {/* Mostramos panel de filtros si es Admin o si es Usuario en tab de búsqueda */}
+        {(isAdmin || tabValue === 0) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                    Filtros de Búsqueda (Mínimo 2)
+                    {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
@@ -226,7 +245,7 @@ function Dashboard({ session, onLogout }) {
                         startIcon={<FilterListIcon />}
                         sx={{ borderRadius: 20, height: '40px' }}
                         >
-                        Filtrar
+                        {isAdmin ? 'Buscar' : 'Filtrar'}
                         </Button>
                     </Grid>
                     </Grid>
@@ -235,7 +254,7 @@ function Dashboard({ session, onLogout }) {
         )}
 
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
-            {tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas'}
+            {isAdmin ? 'Gestión Global de Transferencias' : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
         </Typography>
 
         <Box>
@@ -252,17 +271,23 @@ function Dashboard({ session, onLogout }) {
           )}
 
           {!loading && !error && (
-            (tabValue === 0 && filtersApplied) || (tabValue === 1) ? (
+            (isAdmin || (tabValue === 0 && filtersApplied) || (tabValue === 1)) ? (
                 <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
                     <TableContainer sx={{ maxHeight: 600 }}>
                     <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
                         <TableHead>
                         <TableRow>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID Transacción</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
+                            <TableCell sx={{HZ: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
+                            {/* Columna Extra Solo Admin */}
+                            {isAdmin && (
+                                <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
+                                    Reclamado Por
+                                </TableCell>
+                            )}
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="center">Acción</TableCell>
                         </TableRow>
@@ -273,18 +298,21 @@ function Dashboard({ session, onLogout }) {
                             <Transferencia 
                                 key={transferencia.id_pago} 
                                 transferencia={transferencia} 
-                                session={session} // <--- PASAMOS LA SESIÓN AQUÍ
+                                session={session}
                                 onClaimSuccess={handleTransferenciaClaimed}
                                 onFeedback={handleFeedback}
+                                isAdmin={isAdmin} // Pasamos la prop isAdmin
                             />
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                            <TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 3 }}>
                                 <Typography variant="body1" color="text.secondary">
-                                    {tabValue === 0 
+                                    {isAdmin 
+                                     ? "No se encontraron transferencias." 
+                                     : (tabValue === 0 
                                         ? "No se encontraron transferencias con esos filtros." 
-                                        : "Aún no has reclamado ninguna transferencia."}
+                                        : "Aún no has reclamado ninguna transferencia.")}
                                 </Typography>
                             </TableCell>
                             </TableRow>
@@ -294,7 +322,7 @@ function Dashboard({ session, onLogout }) {
                     </TableContainer>
                 </Paper>
             ) : (
-                tabValue === 0 && !filtersApplied && !loading && (
+                tabValue === 0 && !filtersApplied && !loading && !isAdmin && (
                     <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
                         <Typography color="text.secondary">
                             Utiliza los filtros de arriba para encontrar nuevas transferencias.

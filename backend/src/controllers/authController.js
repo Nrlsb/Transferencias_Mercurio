@@ -28,7 +28,7 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 3. Insertar en la tabla personalizada
+    // 3. Insertar en la tabla personalizada (por defecto is_admin es false en DB)
     const { data, error } = await supabase
       .from('usuarios')
       .insert([{ email, password: hashedPassword }])
@@ -37,13 +37,25 @@ const register = async (req, res) => {
 
     if (error) throw error;
 
-    // 4. Generar Token
-    const token = jwt.sign({ id: data.id, email: data.email }, JWT_SECRET, { expiresIn: '24h' });
+    // 4. Generar Token (Incluimos is_admin en el payload)
+    const token = jwt.sign(
+      { 
+        id: data.id, 
+        email: data.email, 
+        is_admin: data.is_admin || false 
+      }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
 
     res.status(201).json({ 
       message: 'Usuario registrado exitosamente',
       token,
-      user: { id: data.id, email: data.email }
+      user: { 
+        id: data.id, 
+        email: data.email, 
+        is_admin: data.is_admin || false 
+      }
     });
 
   } catch (error) {
@@ -73,13 +85,25 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 3. Generar Token
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+    // 3. Generar Token (Incluimos is_admin en el payload)
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        is_admin: user.is_admin || false 
+      }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
 
     res.json({
       message: 'Login exitoso',
       token,
-      user: { id: user.id, email: user.email }
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        is_admin: user.is_admin || false 
+      }
     });
 
   } catch (error) {

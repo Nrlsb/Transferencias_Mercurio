@@ -11,15 +11,14 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import PersonOffIcon from '@mui/icons-material/PersonOff';
 
-// Recibimos "session" como prop desde el Dashboard
-const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) => {
-  const { id_pago, claimed_by, datos_completos } = transferencia;
+const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isAdmin }) => {
+  const { id_pago, claimed_by, datos_completos, usuarios } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Verificamos si la transferencia ya es del usuario actual
-  // session.user.id viene de nuestro Auth personalizado en App.jsx
   const isMine = !!claimed_by && claimed_by === session?.user?.id; 
 
   const {
@@ -53,8 +52,9 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) =
   };
 
   const handleCopyAndClaim = async () => {
-    // Si ya está reclamada (por mí o por otro), solo copiamos
-    if (claimed_by) {
+    // Si ya está reclamada (por mí o por otro), solo copiamos.
+    // Si soy admin, también solo copio, no reclamo automáticamente a mi nombre a menos que quiera (lógica estándar: admin observa).
+    if (claimed_by || isAdmin) {
        navigator.clipboard.writeText(id_pago.toString());
        if (onFeedback) onFeedback('ID copiado al portapapeles', 'info');
        return;
@@ -109,7 +109,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) =
         scope="row" 
         sx={{ fontWeight: 'medium' }}
       >
-        <Tooltip title={claimed_by ? "Solo copiar (Ya reclamado)" : "Click para Copiar y Reclamar"} arrow>
+        <Tooltip title={claimed_by || isAdmin ? "Solo copiar" : "Click para Copiar y Reclamar"} arrow>
           <Box 
             onClick={handleCopyAndClaim}
             onMouseEnter={() => setIsHovered(true)}
@@ -129,7 +129,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) =
             ) : isMine ? (
                 <AssignmentIndIcon fontSize="small" />
             ) : (
-                isHovered && !claimed_by && <ContentCopyIcon fontSize="small" color="action" />
+                isHovered && !claimed_by && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
             )}
           </Box>
         </Tooltip>
@@ -161,6 +161,30 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) =
             sx={{ fontWeight: 'bold' }}
         />
       </TableCell>
+
+      {/* COLUMNA EXTRA PARA ADMIN */}
+      {isAdmin && (
+        <TableCell>
+            {claimed_by ? (
+                <Chip 
+                    icon={<AssignmentIndIcon />}
+                    label={usuarios?.email || 'Usuario ID: ' + claimed_by.slice(0, 8) + '...'} 
+                    size="small" 
+                    variant="outlined"
+                    color="primary"
+                />
+            ) : (
+                <Chip 
+                    icon={<PersonOffIcon />}
+                    label="Libre" 
+                    size="small" 
+                    variant="outlined"
+                    color="default"
+                    sx={{ borderStyle: 'dashed' }}
+                />
+            )}
+        </TableCell>
+      )}
 
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
         ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}

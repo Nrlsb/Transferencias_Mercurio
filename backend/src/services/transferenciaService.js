@@ -4,15 +4,16 @@ class TransferenciaService {
   
   /**
    * Obtiene transferencias.
+   * - Si es Admin: Ve TODAS y trae la relación de usuario que reclamó.
    * - Si history=true: Devuelve TODO lo reclamado por el usuario.
-   * - Si history=false: Exige filtros.
+   * - Si history=false (y no admin): Exige filtros.
    */
-  async getTransferencias(userId, filters = {}) {
+  async getTransferencias(userId, isAdmin, filters = {}) {
     const { monto, dni, fecha, history } = filters || {};
     const isHistoryMode = history === 'true';
 
-    // 1. Validación de reglas de negocio para Búsqueda Pública
-    if (!isHistoryMode) {
+    // 1. Validación de reglas de negocio para Búsqueda Pública (Solo NO Admins)
+    if (!isAdmin && !isHistoryMode) {
         // Validar longitud mínima de DNI si está presente
         if (dni && dni.length < 8) {
             throw new Error('El DNI debe tener al menos 8 números para realizar la búsqueda.');
@@ -25,18 +26,29 @@ class TransferenciaService {
         if (activeFilters.length < 2) return []; 
     }
 
+    // 2. Construcción de Query
+    // Si es Admin, hacemos join con usuarios para traer el email del reclamador
+    let selectQuery = isAdmin 
+        ? '*, usuarios(email)' // IMPORTANTE: Requiere Foreign Key en DB: transferencias.claimed_by -> usuarios.id
+        : '*';
+
     let query = supabase
       .from('transferencias')
-      .select('*');
+      .select(selectQuery);
 
-    // 2. Aplicación de Scopes
-    if (isHistoryMode) {
+    // 3. Aplicación de Scopes (Permisos de visualización)
+    if (isAdmin) {
+        // Admin ve todo, no filtramos por claimed_by
+        // Opcional: Si el admin quiere ver solo sus reclamos, podría añadirse lógica de filtro aquí, 
+        // pero por defecto ve el "Global".
+    } else if (isHistoryMode) {
         query = query.eq('claimed_by', userId);
     } else {
+        // Usuario normal buscando: Ve libres O suyas
         query = query.or(`claimed_by.is.null,claimed_by.eq.${userId}`);
     }
 
-    // 3. Filtros DB Nativos
+    // 4. Filtros DB Nativos
     if (monto) {
         query = query.eq('monto', parseFloat(monto));
     }

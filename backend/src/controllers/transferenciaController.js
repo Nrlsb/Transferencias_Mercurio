@@ -3,9 +3,10 @@ const transferenciaService = require('../services/transferenciaService');
 const getTransferencias = async (req, res) => {
   try {
     const userId = req.user.id; // Viene del authMiddleware
+    const isAdmin = req.user.is_admin === true; // Verificamos rol desde el token
     const filters = req.query;
 
-    const resultados = await transferenciaService.getTransferencias(userId, filters);
+    const resultados = await transferenciaService.getTransferencias(userId, isAdmin, filters);
     res.status(200).json(resultados);
   } catch (error) {
     // Si es un error de validación de negocio (como el DNI corto), devolvemos 400
