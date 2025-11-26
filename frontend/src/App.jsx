@@ -1,9 +1,36 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import Transferencia from './components/Transferencia'; // Importamos el nuevo componente
 
 function App() {
   // Estado para almacenar la lista de transferencias
-  const [transferencias, setTransferencias] = useState([]);
+  const [transferencias, setTransferencias] = useState([
+    {
+      id: 135301513548,
+      date_approved: '2025-11-26T07:56:01.000-04:00',
+      status: 'approved',
+      transaction_amount: 1000,
+      transaction_details: {
+        net_received_amount: 1000,
+      },
+      fee_details: [
+        {
+          type: 'mercadopago_fee',
+          amount: 0,
+        },
+      ],
+      payment_method_id: 'cvu',
+      description: 'Bank Transfer',
+      payer: {
+        email: 'luksbenitez01@hotmail.com',
+        id: 270641979,
+        identification: {
+          type: 'CUIL',
+          number: '20403144062',
+        },
+      },
+    },
+  ]);
   // Estado para manejar la carga de datos
   const [loading, setLoading] = useState(true);
   // Estado para manejar posibles errores
@@ -15,9 +42,6 @@ function App() {
     const fetchTransferencias = async () => {
       try {
         // Construimos la URL completa para la API.
-        // En producción, usará la variable de entorno de Vercel.
-        // En desarrollo, esta variable no existirá y el fetch fallará si no se define en un .env.local,
-        // pero el proxy de Vite seguirá funcionando para las pruebas locales si se usa la ruta relativa.
         const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias`;
         const response = await fetch(apiUrl);
 
@@ -47,8 +71,9 @@ function App() {
         {error && <p>Error al cargar los datos: {error}</p>}
         {!loading && !error && (
           <div className="transferencias-list">
-            {/* Por ahora, mostramos los datos en formato JSON para verificar */}
-            <pre>{JSON.stringify(transferencias, null, 2)}</pre>
+            {transferencias.map(transferencia => (
+              <Transferencia key={transferencia.id} transferencia={transferencia} />
+            ))}
           </div>
         )}
       </main>
