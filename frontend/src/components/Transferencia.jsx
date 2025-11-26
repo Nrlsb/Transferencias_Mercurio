@@ -6,23 +6,19 @@ import {
   Chip,
   Button,
   Box,
-  Tooltip,
-  Snackbar,
-  Alert
+  Tooltip
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import { supabase } from '../supabaseClient';
 
-const Transferencia = ({ transferencia, onClaimSuccess }) => {
+const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
   const { id_pago, claimed_by, datos_completos } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
-  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
   const [isHovered, setIsHovered] = useState(false);
 
-  // Verificamos si la transferencia ya es del usuario actual (visual only)
-  // Nota: Idealmente pasaríamos el currentUserId como prop para comparar
+  // Verificamos si la transferencia ya es del usuario actual
   const isMine = !!claimed_by; 
 
   const {
@@ -59,7 +55,7 @@ const Transferencia = ({ transferencia, onClaimSuccess }) => {
     if (isMine) {
        // Si ya es mía, solo copiamos sin llamar a la API
        navigator.clipboard.writeText(id_pago.toString());
-       setFeedback({ open: true, message: 'ID copiado al portapapeles', severity: 'info' });
+       if (onFeedback) onFeedback('ID copiado al portapapeles', 'info');
        return;
     }
 
@@ -87,109 +83,99 @@ const Transferencia = ({ transferencia, onClaimSuccess }) => {
         throw new Error(errData.error || "Error al reclamar");
       }
 
-      setFeedback({ open: true, message: '¡Transferencia reclamada y copiada!', severity: 'success' });
+      if (onFeedback) onFeedback('¡Transferencia reclamada y copiada!', 'success');
       
-      // 4. Notificar al padre para actualizar la UI (opcional, si queremos refrescar lista)
+      // 4. Notificar al padre para actualizar la UI
       if (onClaimSuccess) onClaimSuccess();
 
     } catch (error) {
-      setFeedback({ open: true, message: error.message, severity: 'error' });
+      if (onFeedback) onFeedback(error.message, 'error');
     } finally {
       setLoadingClaim(false);
     }
   };
 
-  const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
-
   return (
-    <>
-      <TableRow 
-        hover 
-        sx={{ 
-          bgcolor: isMine ? 'action.hover' : 'inherit',
-          transition: 'background-color 0.3s'
-        }}
+    <TableRow 
+      hover 
+      sx={{ 
+        bgcolor: isMine ? 'action.hover' : 'inherit',
+        transition: 'background-color 0.3s'
+      }}
+    >
+      <TableCell 
+        component="th" 
+        scope="row" 
+        sx={{ fontWeight: 'medium' }}
       >
-        <TableCell 
-          component="th" 
-          scope="row" 
-          sx={{ fontWeight: 'medium' }}
-        >
-          <Tooltip title={isMine ? "Copiado y en tu historial" : "Click para Copiar y Reclamar"} arrow>
-            <Box 
-              onClick={handleCopyAndClaim}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                cursor: 'pointer',
-                color: isMine ? 'primary.main' : 'text.primary',
-                '&:hover': { color: 'primary.dark' }
-              }}
-            >
-              {id_pago}
-              {loadingClaim ? (
-                 <Typography variant="caption">...</Typography>
-              ) : isMine ? (
-                 <AssignmentIndIcon fontSize="small" />
-              ) : (
-                 isHovered && <ContentCopyIcon fontSize="small" color="action" />
-              )}
-            </Box>
-          </Tooltip>
-        </TableCell>
-        
-        <TableCell>
-          <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 500 }}>
-              {description || 'SIN DESCRIPCIÓN'}
-          </Typography>
-        </TableCell>
-
-        <TableCell>{formattedDate}</TableCell>
-
-        <TableCell>
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="body2">{payer?.email || 'N/A'}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                  DNI: {payer?.identification?.number || '-'}
-              </Typography>
-          </Box>
-        </TableCell>
-
-        <TableCell>
-          <Chip 
-              label={getStatusLabel(status)} 
-              color={getStatusColor(status)} 
-              size="small" 
-              variant="outlined"
-              sx={{ fontWeight: 'bold' }}
-          />
-        </TableCell>
-
-        <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-          ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-        </TableCell>
-
-        <TableCell align="center">
-          <Button 
-              variant="outlined" 
-              size="small" 
-              startIcon={<VisibilityIcon />}
-              sx={{ borderRadius: 10, fontSize: '0.7rem' }}
+        <Tooltip title={isMine ? "Copiado y en tu historial" : "Click para Copiar y Reclamar"} arrow>
+          <Box 
+            onClick={handleCopyAndClaim}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1, 
+              cursor: 'pointer',
+              color: isMine ? 'primary.main' : 'text.primary',
+              '&:hover': { color: 'primary.dark' }
+            }}
           >
-              Ver
-          </Button>
-        </TableCell>
-      </TableRow>
+            {id_pago}
+            {loadingClaim ? (
+                <Typography variant="caption">...</Typography>
+            ) : isMine ? (
+                <AssignmentIndIcon fontSize="small" />
+            ) : (
+                isHovered && <ContentCopyIcon fontSize="small" color="action" />
+            )}
+          </Box>
+        </Tooltip>
+      </TableCell>
+      
+      <TableCell>
+        <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 500 }}>
+            {description || 'SIN DESCRIPCIÓN'}
+        </Typography>
+      </TableCell>
 
-      <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
-        <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
-          {feedback.message}
-        </Alert>
-      </Snackbar>
-    </>
+      <TableCell>{formattedDate}</TableCell>
+
+      <TableCell>
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="body2">{payer?.email || 'N/A'}</Typography>
+            <Typography variant="caption" color="text.secondary">
+                DNI: {payer?.identification?.number || '-'}
+            </Typography>
+        </Box>
+      </TableCell>
+
+      <TableCell>
+        <Chip 
+            label={getStatusLabel(status)} 
+            color={getStatusColor(status)} 
+            size="small" 
+            variant="outlined"
+            sx={{ fontWeight: 'bold' }}
+        />
+      </TableCell>
+
+      <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+        ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+      </TableCell>
+
+      <TableCell align="center">
+        <Button 
+            variant="outlined" 
+            size="small" 
+            startIcon={<VisibilityIcon />}
+            sx={{ borderRadius: 10, fontSize: '0.7rem' }}
+        >
+            Ver
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 };
 

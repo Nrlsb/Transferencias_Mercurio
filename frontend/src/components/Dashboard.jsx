@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import Transferencia from './Transferencia';
 import {
@@ -19,16 +19,20 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  InputAdornment
+  InputAdornment,
+  Snackbar
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 function Dashboard({ session }) {
   const [transferencias, setTransferencias] = useState([]);
-  const [loading, setLoading] = useState(false); // Inicializamos en false para esperar filtro
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [filtersApplied, setFiltersApplied] = useState(false); // Nuevo estado para controlar mensaje inicial
+  const [filtersApplied, setFiltersApplied] = useState(false);
+
+  // Estado del Snackbar (Elevado para evitar errores de anidación HTML)
+  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
@@ -67,13 +71,9 @@ function Dashboard({ session }) {
     }
   };
 
-  // Eliminamos el useEffect que cargaba todo al inicio para respetar la lógica de "requiere 2 filtros"
-  // y evitar cargas masivas innecesarias.
-
   const handleFilter = (e) => {
     if(e) e.preventDefault();
     
-    // Validación de filtros mínimos (Frontend)
     const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
     if(activeFilters < 2) {
         setError("Por favor, ingrese al menos 2 criterios de búsqueda.");
@@ -92,11 +92,17 @@ function Dashboard({ session }) {
     fetchTransferencias(`?${params.toString()}`);
   };
 
-  // Función para recargar la lista si se reclama una transferencia
+  // Callback que se pasa a Transferencia para actualizar la lista
   const handleTransferenciaClaimed = () => {
-    // Volvemos a ejecutar la búsqueda actual para actualizar el estado visual (claimed_by)
     handleFilter(null);
   };
+
+  // Callback que se pasa a Transferencia para mostrar mensajes
+  const handleFeedback = (message, severity = 'success') => {
+    setFeedback({ open: true, message, severity });
+  };
+
+  const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
   const handleLogout = () => {
     supabase.auth.signOut();
@@ -225,6 +231,7 @@ function Dashboard({ session }) {
                             key={transferencia.id_pago} 
                             transferencia={transferencia} 
                             onClaimSuccess={handleTransferenciaClaimed}
+                            onFeedback={handleFeedback}
                         />
                         ))
                     ) : (
@@ -252,6 +259,13 @@ function Dashboard({ session }) {
         </Box>
 
       </Container>
+      
+      {/* Snackbar movido fuera de la tabla para evitar errores de hidratación */}
+      <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
+        <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
