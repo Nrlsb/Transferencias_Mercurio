@@ -19,10 +19,8 @@ class TransferenciaService {
             throw new Error('El DNI debe tener al menos 8 números para realizar la búsqueda.');
         }
 
-        // CORRECCIÓN AQUÍ: 
-        // Agregamos 'fechaDesde' al array para que cuente como filtro válido.
-        // Si viene fechaDesde o fechaHasta, significa que el usuario está filtrando por fecha.
-        const activeFilters = [monto, dni, fecha,SH, fechaDesde].filter(val => val !== undefined && val !== null && val !== '');
+        // CORRECCIÓN: Eliminado el typo "SH" y agregados fechaDesde/fechaHasta al conteo de filtros activos.
+        const activeFilters = [monto, dni, fecha, fechaDesde, fechaHasta].filter(val => val !== undefined && val !== null && val !== '');
         
         // Mantenemos la regla: Mínimo 2 filtros para evitar scraping
         if (activeFilters.length < 2) return []; 
