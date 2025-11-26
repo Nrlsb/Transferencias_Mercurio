@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '../supabaseClient';
 import Transferencia from './Transferencia';
 import {
   AppBar,
@@ -25,7 +24,8 @@ import {
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
-function Dashboard({ session }) {
+// Agregamos onLogout a los props
+function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,6 +42,7 @@ function Dashboard({ session }) {
     setLoading(true);
     setError(null);
 
+    // Validación de sesión
     if (!session?.access_token) {
         setError("No hay una sesión de usuario válida.");
         setLoading(false);
@@ -53,19 +54,23 @@ function Dashboard({ session }) {
       
       const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`, // Usamos nuestro JWT Custom
         },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error del servidor' }));
-        throw new Error(errorData.error);
+        throw new Error(errorData.error || 'Error al obtener datos');
       }
       
       const data = await response.json();
       setTransferencias(data);
     } catch (e) {
       setError(e.message);
+      // Si el token es inválido (401/403), podríamos forzar logout
+      if (e.message.includes('No autorizado') || e.message.includes('Token')) {
+          if (onLogout) onLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -102,22 +107,6 @@ function Dashboard({ session }) {
 
   const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
-  // --- CORRECCIÓN PRINCIPAL AQUÍ ---
-  const handleLogout = async () => {
-    try {
-      // Intentamos cerrar sesión limpiamente
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Error al cerrar sesión en Supabase:", error);
-    } finally {
-      // Independientemente de si funcionó o dio error (403),
-      // forzamos la recarga de la página. Esto limpia el estado de React
-      // y obliga a App.jsx a verificar la sesión desde cero (la cual será nula).
-      window.location.reload();
-    }
-  };
-  // ---------------------------------
-  
   return (
     <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
@@ -133,7 +122,7 @@ function Dashboard({ session }) {
                 <Button 
                 color="primary" 
                 variant="outlined"
-                onClick={handleLogout} 
+                onClick={onLogout} 
                 startIcon={<LogoutIcon />}
                 size="small"
                 sx={{ borderRadius: 20 }}

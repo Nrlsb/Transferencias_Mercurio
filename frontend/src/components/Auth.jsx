@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { supabase } from '../supabaseClient';
 import { 
   Box, 
   Button, 
@@ -11,46 +10,54 @@ import {
   Alert 
 } from '@mui/material';
 
-export default function Auth() {
+// Recibimos la función setToken desde App.jsx para actualizar el estado global
+export default function Auth({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
+    setLoading(true);
+
+    const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
+    const apiUrl = `${import.meta.env.VITE_API_BASE_URL}${endpoint}`;
 
     try {
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      // El listener en App.jsx manejará la redirección
-    } catch (error) {
-      setMessage({ type: 'error', text: error.error_description || error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setMessage({ type: '', text: '' });
+      const data = await response.json();
 
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      setMessage({ type: 'success', text: '¡Registro exitoso! Revisa tu correo para verificar tu cuenta.' });
+      if (!response.ok) {
+        throw new Error(data.error || 'Error en la operación');
+      }
+
+      if (isRegistering) {
+        // Si es registro exitoso, logueamos automáticamente
+        setMessage({ type: 'success', text: 'Registro exitoso. Iniciando sesión...' });
+        onLoginSuccess(data.token, data.user);
+      } else {
+        // Login normal
+        onLoginSuccess(data.token, data.user);
+      }
+
     } catch (error) {
-      setMessage({ type: 'error', text: error.error_description || error.message });
+      setMessage({ type: 'error', text: error.message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // Usamos Box con flexbox para centrar perfectamente el contenido en toda la pantalla
     <Box 
       sx={{ 
         minHeight: '100vh', 
@@ -58,7 +65,7 @@ export default function Auth() {
         alignItems: 'center', 
         justifyContent: 'center',
         bgcolor: 'background.default',
-        p: 2 // Padding para móviles
+        p: 2 
       }}
     >
       <Container component="main" maxWidth="xs">
@@ -69,7 +76,7 @@ export default function Auth() {
                 Mercurio Transferencias
                 </Typography>
                 <Typography component="p" variant="body2" color="text.secondary">
-                Inicia sesión o regístrate para continuar
+                {isRegistering ? 'Crea una cuenta nueva' : 'Inicia sesión para continuar'}
                 </Typography>
             </Box>
 
@@ -79,7 +86,7 @@ export default function Auth() {
               </Alert>
             )}
 
-            <Box component="form" onSubmit={handleLogin} sx={{ mt: 1 }}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
               <TextField
                 margin="normal"
                 required
@@ -113,18 +120,21 @@ export default function Auth() {
                 sx={{ mt: 3, mb: 2, borderRadius: 2 }}
                 disabled={loading}
               >
-                {loading ? 'Cargando...' : 'Iniciar Sesión'}
+                {loading ? 'Cargando...' : (isRegistering ? 'Registrarse' : 'Iniciar Sesión')}
               </Button>
 
               <Button
                 type="button"
                 fullWidth
-                variant="outlined"
-                onClick={handleSignUp}
+                variant="text"
+                onClick={() => {
+                    setIsRegistering(!isRegistering);
+                    setMessage({ type: '', text: '' });
+                }}
                 disabled={loading}
                 sx={{ borderRadius: 2 }}
               >
-                Registrarse
+                {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
               </Button>
             </Box>
           </CardContent>
