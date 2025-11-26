@@ -31,7 +31,7 @@ function Dashboard({ session }) {
   const [error, setError] = useState(null);
   const [filtersApplied, setFiltersApplied] = useState(false);
 
-  // Estado del Snackbar (Elevado para evitar errores de anidación HTML)
+  // Estado del Snackbar
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
   const [montoFilter, setMontoFilter] = useState('');
@@ -92,21 +92,31 @@ function Dashboard({ session }) {
     fetchTransferencias(`?${params.toString()}`);
   };
 
-  // Callback que se pasa a Transferencia para actualizar la lista
   const handleTransferenciaClaimed = () => {
     handleFilter(null);
   };
 
-  // Callback que se pasa a Transferencia para mostrar mensajes
   const handleFeedback = (message, severity = 'success') => {
     setFeedback({ open: true, message, severity });
   };
 
   const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
-  const handleLogout = () => {
-    supabase.auth.signOut();
+  // --- CORRECCIÓN PRINCIPAL AQUÍ ---
+  const handleLogout = async () => {
+    try {
+      // Intentamos cerrar sesión limpiamente
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error al cerrar sesión en Supabase:", error);
+    } finally {
+      // Independientemente de si funcionó o dio error (403),
+      // forzamos la recarga de la página. Esto limpia el estado de React
+      // y obliga a App.jsx a verificar la sesión desde cero (la cual será nula).
+      window.location.reload();
+    }
   };
+  // ---------------------------------
   
   return (
     <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
@@ -260,7 +270,6 @@ function Dashboard({ session }) {
 
       </Container>
       
-      {/* Snackbar movido fuera de la tabla para evitar errores de hidratación */}
       <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
         <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
           {feedback.message}
