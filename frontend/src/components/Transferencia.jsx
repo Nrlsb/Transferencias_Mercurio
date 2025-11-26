@@ -4,11 +4,9 @@ import {
   TableCell,
   Typography,
   Chip,
-  Button,
   Box,
   Tooltip
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
@@ -190,16 +188,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
       </TableCell>
 
-      <TableCell align="center">
-        <Button 
-            variant="outlined" 
-            size="small" 
-            startIcon={<VisibilityIcon />}
-            sx={{ borderRadius: 10, fontSize: '0.7rem' }}
-        >
-            Ver
-        </Button>
-      </TableCell>
+      {/* CAMBIO: Se eliminó la celda que contenía el botón "Ver" */}
     </TableRow>
   );
 };

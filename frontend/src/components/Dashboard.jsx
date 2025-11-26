@@ -144,10 +144,17 @@ function Dashboard({ session, onLogout }) {
         // Nuevo filtro de solo reclamados
         if (onlyClaimedFilter) params.append('soloReclamados', 'true');
     } else {
-        // Filtro Usuario: Fecha puntual con hora (datetime-local)
+        // Filtro Usuario: Fecha puntual (YYYY-MM-DD)
+        // CAMBIO: Se enviará solo la fecha, el backend ya maneja el rango del día completo.
         if (fechaFilter) {
-            const utcDateString = new Date(fechaFilter).toISOString();
-            params.append('fecha', utcDateString);
+            params.append('fechaDesde', fechaFilter);
+            params.append('fechaHasta',QHacer => fechaFilter); // Usamos mismo día para desde/hasta = un día específico
+            // Nota: Podríamos adaptar el backend para recibir solo 'fecha' y tratarlo como día, 
+            // pero reutilizar la lógica de rangos (fechaDesde/Hasta) que ya tenemos en backend es más seguro.
+            // O simplemente enviamos 'fecha' y dejamos que el backend decida (como estaba antes con 10 mins o día).
+            // Vamos a enviar 'fechaDesde' y 'fechaHasta' con el mismo valor para buscar en TODO el día seleccionado.
+             params.set('fechaDesde', fechaFilter);
+             params.set('fechaHasta', fechaFilter);
         }
     }
     
@@ -347,7 +354,7 @@ function Dashboard({ session, onLogout }) {
                                     <TextField
                                     fullWidth
                                     label="Desde"
-                                    type="date" // CAMBIO: Solo fecha
+                                    type="date" 
                                     variant="outlined"
                                     value={dateFromFilter}
                                     onChange={(e) => setDateFromFilter(e.target.value)}
@@ -359,7 +366,7 @@ function Dashboard({ session, onLogout }) {
                                     <TextField
                                     fullWidth
                                     label="Hasta"
-                                    type="date" // CAMBIO: Solo fecha
+                                    type="date" 
                                     variant="outlined"
                                     value={dateToFilter}
                                     onChange={(e) => setDateToFilter(e.target.value)}
@@ -384,9 +391,10 @@ function Dashboard({ session, onLogout }) {
                             </>
                         ) : (
                             <Grid item xs={12} sm={6} md={3}>
+                                {/* CAMBIO: Input type="date" en lugar de "datetime-local" */}
                                 <TextField
                                 fullWidth
-                                type="datetime-local"
+                                type="date"
                                 variant="outlined"
                                 value={fechaFilter}
                                 onChange={(e) => setFechaFilter(e.target.value)}
@@ -431,8 +439,6 @@ function Dashboard({ session, onLogout }) {
             </Paper>
         )}
 
-        {/* ... resto del código (Tabla, etc) igual ... */}
-        
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
             {isAdmin ? 'Gestión Global de Transferencias' : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
         </Typography>
@@ -469,7 +475,7 @@ function Dashboard({ session, onLogout }) {
                                 </TableCell>
                             )}
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="center">Acción</TableCell>
+                            {/* CAMBIO: Se eliminó la columna "Acción" que contenía el botón "Ver" */}
                         </TableRow>
                         </TableHead>
                         <TableBody>
@@ -486,7 +492,7 @@ function Dashboard({ session, onLogout }) {
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 3 }}>
+                            <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 3 }}>
                                 <Typography variant="body1" color="text.secondary">
                                     {isAdmin 
                                      ? "No se encontraron transferencias." 
