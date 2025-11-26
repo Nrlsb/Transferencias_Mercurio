@@ -2,8 +2,11 @@ import React from 'react';
 import './Transferencia.css';
 
 const Transferencia = ({ transferencia }) => {
+  // Tomamos id_pago para mostrarlo, y datos_completos para el resto
+  const { id_pago, datos_completos } = transferencia;
+
+  // El resto de los datos están anidados dentro de datos_completos
   const {
-    id,
     date_approved,
     status,
     transaction_details,
@@ -12,23 +15,24 @@ const Transferencia = ({ transferencia }) => {
     payment_method_id,
     description,
     payer,
-  } = transferencia;
+  } = datos_completos || {}; // Usamos un objeto vacío como fallback
 
   // Formatear la fecha para que sea más legible
-  const formattedDate = new Date(date_approved).toLocaleString();
+  const formattedDate = date_approved ? new Date(date_approved).toLocaleString() : 'N/A';
 
   return (
     <div className="transferencia-card">
-      <h2>ID Transacción: {id}</h2>
+      {/* Usamos id_pago como el ID de la transacción visible */}
+      <h2>ID Transacción: {id_pago}</h2>
       <div className="info-grid">
         <div className="info-item">
           <span>📅 Fecha Aprobado:</span> {formattedDate}
         </div>
         <div className="info-item">
-          <span>📊 Estado:</span> {status} (accredited)
+          <span>📊 Estado:</span> {status || 'N/A'} (accredited)
         </div>
         <div className="info-item">
-          <span>💰 Monto Bruto:</span> ${transaction_amount} ARS
+          <span>💰 Monto Bruto:</span> ${transaction_amount || 'N/A'} ARS
         </div>
         <div className="info-item">
           <span>💸 Monto Neto:</span> ${transaction_details?.net_received_amount || 'N/A'}
@@ -37,10 +41,10 @@ const Transferencia = ({ transferencia }) => {
           <span>📉 Comisión MP:</span> ${fee_details?.find(fee => fee.type === 'mercadopago_fee')?.amount || 0}
         </div>
         <div className="info-item">
-          <span>💳 Método de Pago:</span> {payment_method_id} (bank_transfer)
+          <span>💳 Método de Pago:</span> {payment_method_id || 'N/A'} (bank_transfer)
         </div>
         <div className="info-item">
-          <span>📝 Descripción:</span> {description}
+          <span>📝 Descripción:</span> {description || 'N/A'}
         </div>
       </div>
       <div className="payer-info">
