@@ -4,48 +4,43 @@ class TransferenciaService {
   
   /**
    * Obtiene transferencias.
-   * - Si history=true: Devuelve TODO lo reclamado por el usuario (sin filtros obligatorios).
-   * - Si history=false (Search): Exige filtros y busca en (No reclamadas OR Reclamadas por mí).
+   * - Si history=true: Devuelve TODO lo reclamado por el usuario.
+   * - Si history=false: Exige filtros.
    */
   async getTransferencias(userId, filters = {}) {
-    const { monto, dni, fecha, history } = filters;
+    const { monto, dni, fecha, history } = filters || {}; // Protección si filters es undefined
     const isHistoryMode = history === 'true';
 
     // 1. Validación de reglas de negocio para Búsqueda Pública
     if (!isHistoryMode) {
-        const filterCount = [monto, dni, fecha].filter(ub => !!ub.length).length;
-        // Mantenemos la regla: Mínimo 2 filtros para evitar scraping en modo búsqueda
-        if (filterCount < 2) return []; 
+        // Creamos un array seguro con los valores de los filtros
+        const activeFilters = [monto, dni, fecha].filter(val => val !== undefined && val !== null && val !== '');
+        
+        // Mantenemos la regla: Mínimo 2 filtros para evitar scraping
+        if (activeFilters.length < 2) return []; 
     }
 
     let query = supabase
       .from('transferencias')
       .select('*');
 
-    // 2. Aplicación de Scopes (Alcance de la consulta)
+    // 2. Aplicación de Scopes
     if (isHistoryMode) {
-        // MODO HISTORIAL: Solo lo mío
         query = query.eq('claimed_by', userId);
     } else {
-        // MODO BÚSQUEDA: Libre OR Mío
-        // Sintaxis PostgREST para OR: "col.op.val,col.op.val"
         query = query.or(`claimed_by.is.null,claimed_by.eq.${userId}`);
     }
 
-    // 3. Filtros DB Nativos (Eficiencia Máxima)
+    // 3. Filtros DB Nativos
     if (monto) {
         query = query.eq('monto', parseFloat(monto));
     }
 
-    // Filtro JSONB Nativo para DNI (PostgreSQL lo procesa, no Node.js)
-    // Asumimos estructura: datos_completos -> payer -> identification -> number
     if (dni) {
-        // Usamos el operador contains para buscar dentro del JSON
-        // Nota: Esto requiere que datos_completos sea columna JSONB
+        // Búsqueda dentro del JSONB
         query = query.filter('datos_completos->payer->identification->number', 'ilike', `%${dni}%`);
     }
 
-    // Filtro de Rango de Fecha (+/- 10 minutos) Nativo
     if (fecha) {
         const fechaTarget = new Date(fecha);
         if (!isNaN(fechaTarget.getTime())) {
@@ -61,36 +56,34 @@ class TransferenciaService {
     // Ordenamiento
     query = query.order('fecha_aprobado', { ascending: false });
 
-    // Ejecución
+    // Ejecución segura
     const { data, error } = await query;
 
     if (error) {
-        console.error("DB Error:", error);
+        console.error("DB Error:", error.message);
         throw new Error('Error al consultar la base de datos');
     }
 
-    return data;
+    // Retornamos array vacío si data es null/undefined para evitar errores en .length del frontend/backend
+    return data || [];
   }
 
   /**
    * Reclama una transferencia de forma ATÓMICA.
-   * Evita condiciones de carrera (Race Conditions).
    */
   async claimTransferencia(idPago, userId) {
-    // Intentamos actualizar SOLO si claimed_by es NULL.
-    // Esto es atómico en PostgreSQL.
     const { data, error } = await supabase
       .from('transferencias')
       .update({ claimed_by: userId })
       .eq('id_pago', idPago)
-      .is('claimed_by', null) // Condición Clave: Solo si está libre
+      .is('claimed_by', null)
       .select();
 
     if (error) throw new Error(error.message);
 
-    // Si data está vacío, significa que ninguna fila cumplió la condición (ya estaba reclamada)
+    // Validación segura de data
     if (!data || data.length === 0) {
-        // Verificamos si ya era mía para dar un mensaje idempotente amigable
+        // Verificamos propiedad para mensaje de error amigable
         const { data: checkOwner } = await supabase
             .from('transferencias')
             .select('claimed_by')
@@ -108,17 +101,16 @@ class TransferenciaService {
   }
 
   /**
-   * Guarda una nueva transferencia desde el Webhook
+   * Guarda desde Webhook
    */
   async createTransferenciaFromWebhook(paymentDetails) {
-    // Verificación básica para evitar duplicados si MP reintenta el webhook
     const { data: existing } = await supabase
         .from('transferencias')
         .select('id_pago')
         .eq('id_pago', paymentDetails.id)
         .single();
     
-    if (existing) return true; // Ya existe, ignoramos
+    if (existing) return true;
 
     const { error } = await supabase
       .from('transferencias')
@@ -131,14 +123,11 @@ class TransferenciaService {
           descripcion: paymentDetails.description,
           email_pagador: paymentDetails.payer ? paymentDetails.payer.email : null,
           datos_completos: paymentDetails,
-          claimed_by: null // Empieza pública
+          claimed_by: null
         }
       ]);
 
-    if (error) {
-        console.error("Error insertando transferencia:", error);
-        throw error;
-    }
+    if (error) throw error;
     return true;
   }
 }
