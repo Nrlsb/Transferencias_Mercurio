@@ -38,10 +38,16 @@ function Dashboard({ session, onLogout }) {
   // Estado para controlar las pestañas (0: Buscar, 1: Historial)
   const [tabValue, setTabValue] = useState(0);
 
-  // Filtros Búsqueda
+  // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
-  const [fechaFilter, setFechaFilter] = useState('');
+  const [fechaFilter, setFechaFilter] = useState(''); // Fecha puntual (Usuarios)
+
+  // Filtros Admin
+  const [adminUserFilter, setAdminUserFilter] = useState(''); // Email quien reclamo
+  const [dateFromFilter, setDateFromFilter] = useState('');   // Fecha Desde
+  const [dateToFilter, setDateToFilter] = useState('');       // Fecha Hasta
+
   const [filtersApplied, setFiltersApplied] = useState(false);
 
   // Feedback UI
@@ -65,7 +71,7 @@ function Dashboard({ session, onLogout }) {
             setFiltersApplied(false);
         }
     }
-  }, [tabValue, isAdmin]); // isAdmin agregado para reaccionar al rol
+  }, [tabValue, isAdmin]); 
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -124,9 +130,18 @@ function Dashboard({ session, onLogout }) {
     const params = new URLSearchParams();
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
-    if (fechaFilter) {
-      const utcDateString = new Date(fechaFilter).toISOString();
-      params.append('fecha', utcDateString);
+
+    if (isAdmin) {
+        // Filtros Admin: Rango de fechas y Usuario
+        if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
+        if (dateFromFilter) params.append('fechaDesde', new Date(dateFromFilter).toISOString());
+        if (dateToFilter) params.append('fechaHasta', new Date(dateToFilter).toISOString());
+    } else {
+        // Filtro Usuario: Fecha puntual
+        if (fechaFilter) {
+            const utcDateString = new Date(fechaFilter).toISOString();
+            params.append('fecha', utcDateString);
+        }
     }
     
     if (tabValue === 1 && !isAdmin) params.append('history', 'true');
@@ -136,7 +151,11 @@ function Dashboard({ session, onLogout }) {
 
   const handleTransferenciaClaimed = () => {
     if (isAdmin) {
-        fetchTransferencias(); // Admin recarga todo
+        // Admin recarga manteniendo filtros actuales si fuera necesario, 
+        // por simplicidad aquí llamamos al submit simulado o fetch directo
+        // fetchTransferencias(); 
+        // Mejor simulamos un submit para no perder filtros activos
+        handleSearchSubmit(null);
     } else if (tabValue === 0 && filtersApplied) {
         handleSearchSubmit(null);
     } else if (tabValue === 1) {
@@ -180,8 +199,6 @@ function Dashboard({ session, onLogout }) {
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        {/* Los Admins no necesitan Tabs de Buscar/Historial, ven todo en una vista global. Pero si quieres mantenerlas, puedes.
-            Para simplificar y dar poder, ocultamos tabs para Admin y mostramos filtros globales. */}
         {!isAdmin && (
             <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
                 <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
@@ -191,7 +208,6 @@ function Dashboard({ session, onLogout }) {
             </Paper>
         )}
 
-        {/* Mostramos panel de filtros si es Admin o si es Usuario en tab de búsqueda */}
         {(isAdmin || tabValue === 0) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
@@ -199,55 +215,100 @@ function Dashboard({ session, onLogout }) {
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                        fullWidth
-                        placeholder="Monto Exacto"
-                        type="number"
-                        label="Monto"
-                        variant="outlined"
-                        value={montoFilter}
-                        onChange={(e) => setMontoFilter(e.target.value)}
-                        size="small"
-                        InputProps={{
-                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                        fullWidth
-                        placeholder="DNI"
-                        label="DNI del Pagador"
-                        type="text"
-                        variant="outlined"
-                        value={dniFilter}
-                        onChange={(e) => setDniFilter(e.target.value)}
-                        size="small"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                        fullWidth
-                        type="datetime-local"
-                        variant="outlined"
-                        value={fechaFilter}
-                        onChange={(e) => setFechaFilter(e.target.value)}
-                        size="small"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <Button 
-                        type="submit" 
-                        variant="contained" 
-                        disableElevation
-                        fullWidth 
-                        startIcon={<FilterListIcon />}
-                        sx={{ borderRadius: 20, height: '40px' }}
-                        >
-                        {isAdmin ? 'Buscar' : 'Filtrar'}
-                        </Button>
-                    </Grid>
+                        {/* Filtros Comunes */}
+                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
+                            <TextField
+                            fullWidth
+                            placeholder="Monto Exacto"
+                            type="number"
+                            label="Monto"
+                            variant="outlined"
+                            value={montoFilter}
+                            onChange={(e) => setMontoFilter(e.target.value)}
+                            size="small"
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                            }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
+                            <TextField
+                            fullWidth
+                            placeholder="DNI"
+                            label="DNI del Pagador"
+                            type="text"
+                            variant="outlined"
+                            value={dniFilter}
+                            onChange={(e) => setDniFilter(e.target.value)}
+                            size="small"
+                            />
+                        </Grid>
+
+                        {/* Filtros Específicos ADMIN vs USER */}
+                        {isAdmin ? (
+                            <>
+                                <Grid item xs={12} sm={6} md={2}>
+                                    <TextField
+                                    fullWidth
+                                    placeholder="email@ejemplo.com"
+                                    label="Email quien Reclamó"
+                                    type="text"
+                                    variant="outlined"
+                                    value={adminUserFilter}
+                                    onChange={(e) => setAdminUserFilter(e.target.value)}
+                                    size="small"
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2}>
+                                    <TextField
+                                    fullWidth
+                                    label="Desde"
+                                    type="datetime-local"
+                                    variant="outlined"
+                                    value={dateFromFilter}
+                                    onChange={(e) => setDateFromFilter(e.target.value)}
+                                    size="small"
+                                    InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2}>
+                                    <TextField
+                                    fullWidth
+                                    label="Hasta"
+                                    type="datetime-local"
+                                    variant="outlined"
+                                    value={dateToFilter}
+                                    onChange={(e) => setDateToFilter(e.target.value)}
+                                    size="small"
+                                    InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+                            </>
+                        ) : (
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField
+                                fullWidth
+                                type="datetime-local"
+                                variant="outlined"
+                                value={fechaFilter}
+                                onChange={(e) => setFechaFilter(e.target.value)}
+                                size="small"
+                                />
+                            </Grid>
+                        )}
+
+                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
+                            <Button 
+                            type="submit" 
+                            variant="contained" 
+                            disableElevation
+                            fullWidth 
+                            startIcon={<FilterListIcon />}
+                            sx={{ borderRadius: 20, height: '40px' }}
+                            >
+                            {isAdmin ? 'Buscar Global' : 'Filtrar'}
+                            </Button>
+                        </Grid>
                     </Grid>
                 </Box>
             </Paper>
@@ -278,7 +339,7 @@ function Dashboard({ session, onLogout }) {
                         <TableHead>
                         <TableRow>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID Transacción</TableCell>
-                            <TableCell sx={{HZ: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
+                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
@@ -301,7 +362,7 @@ function Dashboard({ session, onLogout }) {
                                 session={session}
                                 onClaimSuccess={handleTransferenciaClaimed}
                                 onFeedback={handleFeedback}
-                                isAdmin={isAdmin} // Pasamos la prop isAdmin
+                                isAdmin={isAdmin} 
                             />
                             ))
                         ) : (
