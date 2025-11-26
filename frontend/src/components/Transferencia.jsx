@@ -5,7 +5,8 @@ import {
   Typography,
   Chip,
   Box,
-  Tooltip
+  Tooltip,
+  IconButton
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
@@ -94,6 +95,32 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     }
   };
 
+  // NUEVA FUNCION PARA ANULAR RECLAMO (ADMIN)
+  const handleUnclaim = async () => {
+    if(!isAdmin) return;
+
+    // Confirmación simple
+    if(!window.confirm("¿Estás seguro de que deseas liberar esta transferencia?")) return;
+
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${id_pago}/unclaim`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) throw new Error("Error al liberar transferencia");
+
+        if (onFeedback) onFeedback('Transferencia liberada exitosamente', 'success');
+        if (onClaimSuccess) onClaimSuccess(); // Actualizamos la lista
+
+    } catch (error) {
+        if (onFeedback) onFeedback(error.message, 'error');
+    }
+  };
+
   return (
     <TableRow 
       hover 
@@ -170,6 +197,30 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
                     size="small" 
                     variant="outlined"
                     color="primary"
+                    // AQUÍ ESTÁ EL CAMBIO: onDelete permite eliminar/liberar
+                    onDelete={handleUnclaim}
+                    deleteIcon={
+                        <Tooltip title="Liberar Transferencia">
+                            <Box 
+                                component="span" 
+                                sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    bgcolor: 'error.main', 
+                                    borderRadius: '50%', 
+                                    width: 16, 
+                                    height: 16, 
+                                    color: 'white',
+                                    fontSize: '10px',
+                                    cursor: 'pointer',
+                                    '&:hover': { bgcolor: 'error.dark' }
+                                }}
+                            >
+                                X
+                            </Box>
+                        </Tooltip>
+                    }
                 />
             ) : (
                 <Chip 
@@ -187,8 +238,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
         ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
       </TableCell>
-
-      {/* CAMBIO: Se eliminó la celda que contenía el botón "Ver" */}
     </TableRow>
   );
 };

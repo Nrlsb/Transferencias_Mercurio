@@ -136,6 +136,18 @@ class TransferenciaService {
     return data[0];
   }
 
+  // NUEVO METODO PARA LIBERAR TRANSFERENCIA (ADMIN)
+  async unclaimTransferencia(idPago) {
+    const { data, error } = await supabase
+      .from('transferencias')
+      .update({ claimed_by: null })
+      .eq('id_pago', idPago)
+      .select();
+
+    if (error) throw new Error(error.message);
+    return data[0];
+  }
+
   async createTransferenciaFromWebhook(paymentDetails) {
     const { data: existing } = await supabase
         .from('transferencias')
