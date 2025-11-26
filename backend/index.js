@@ -2,6 +2,7 @@ const express = require("express");
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const dotenv = require("dotenv");
 const { createClient } = require("@supabase/supabase-js");
+const cors = require("cors");
 
 // Carga las variables de entorno
 dotenv.config();
@@ -24,6 +25,7 @@ const app = express();
 const port = 3000;
 
 // Middlewares necesarios para recibir datos
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
