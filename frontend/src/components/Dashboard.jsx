@@ -45,14 +45,12 @@ function Dashboard({ session, onLogout }) {
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
-  // Efecto para cargar historial automáticamente al cambiar de tab
   useEffect(() => {
     if (tabValue === 1) {
         // Si vamos a la pestaña Historial, cargamos datos inmediatamente
         fetchTransferencias('?history=true');
     } else {
         // Si volvemos a Búsqueda, limpiamos la tabla si no había búsqueda previa
-        // Opcional: Podríamos persistir el estado de la búsqueda anterior
         setTransferencias([]);
         setFiltersApplied(false);
     }
@@ -60,7 +58,7 @@ function Dashboard({ session, onLogout }) {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-    setError(null); // Limpiar errores al cambiar de contexto
+    setError(null);
   };
 
   const fetchTransferencias = async (queryParams = '') => {
@@ -102,7 +100,6 @@ function Dashboard({ session, onLogout }) {
   const handleSearchSubmit = (e) => {
     if(e) e.preventDefault();
     
-    // Validar solo si estamos en modo búsqueda
     if (tabValue === 0) {
         const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
@@ -120,7 +117,6 @@ function Dashboard({ session, onLogout }) {
       params.append('fecha', utcDateString);
     }
     
-    // Si estamos en historial, forzamos history=true aunque filtremos (opcional, por ahora historial carga todo)
     if (tabValue === 1) params.append('history', 'true');
 
     fetchTransferencias(`?${params.toString()}`);
@@ -143,7 +139,6 @@ function Dashboard({ session, onLogout }) {
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
-      {/* Header */}
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
         <Container maxWidth="xl">
             <Toolbar disableGutters>
@@ -171,7 +166,6 @@ function Dashboard({ session, onLogout }) {
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        {/* Tabs de Navegación */}
         <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
             <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
                 <Tab icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />
@@ -179,7 +173,6 @@ function Dashboard({ session, onLogout }) {
             </Tabs>
         </Paper>
 
-        {/* Panel de Búsqueda (Solo visible en Tab 0) */}
         {tabValue === 0 && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
@@ -241,12 +234,10 @@ function Dashboard({ session, onLogout }) {
             </Paper>
         )}
 
-        {/* Título de Sección Dinámico */}
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
             {tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas'}
         </Typography>
 
-        {/* Área de Contenido (Tabla y Errores) */}
         <Box>
           {loading && (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -260,7 +251,6 @@ function Dashboard({ session, onLogout }) {
             </Alert>
           )}
 
-          {/* Renderizado Condicional de la Tabla */}
           {!loading && !error && (
             (tabValue === 0 && filtersApplied) || (tabValue === 1) ? (
                 <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
@@ -283,6 +273,7 @@ function Dashboard({ session, onLogout }) {
                             <Transferencia 
                                 key={transferencia.id_pago} 
                                 transferencia={transferencia} 
+                                session={session} // <--- PASAMOS LA SESIÓN AQUÍ
                                 onClaimSuccess={handleTransferenciaClaimed}
                                 onFeedback={handleFeedback}
                             />
@@ -303,7 +294,6 @@ function Dashboard({ session, onLogout }) {
                     </TableContainer>
                 </Paper>
             ) : (
-                // Mensaje Empty State para Búsqueda sin filtros
                 tabValue === 0 && !filtersApplied && !loading && (
                     <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
                         <Typography color="text.secondary">

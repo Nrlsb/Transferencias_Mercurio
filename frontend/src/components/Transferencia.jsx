@@ -11,15 +11,16 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
-import { supabase } from '../supabaseClient';
 
-const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
+// Recibimos "session" como prop desde el Dashboard
+const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback }) => {
   const { id_pago, claimed_by, datos_completos } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Verificamos si la transferencia ya es del usuario actual
-  const isMine = !!claimed_by; 
+  // session.user.id viene de nuestro Auth personalizado en App.jsx
+  const isMine = !!claimed_by && claimed_by === session?.user?.id; 
 
   const {
     date_approved,
@@ -52,8 +53,8 @@ const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
   };
 
   const handleCopyAndClaim = async () => {
-    if (isMine) {
-       // Si ya es mía, solo copiamos sin llamar a la API
+    // Si ya está reclamada (por mí o por otro), solo copiamos
+    if (claimed_by) {
        navigator.clipboard.writeText(id_pago.toString());
        if (onFeedback) onFeedback('ID copiado al portapapeles', 'info');
        return;
@@ -65,9 +66,8 @@ const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
       // 1. Copiar al portapapeles
       await navigator.clipboard.writeText(id_pago.toString());
 
-      // 2. Obtener sesión para el token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No hay sesión activa");
+      // 2. Usar el token que recibimos por props
+      if (!session?.access_token) throw new Error("No hay sesión activa");
 
       // 3. Llamar al backend para reclamar
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${id_pago}/claim`, {
@@ -78,9 +78,10 @@ const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
         }
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Error al reclamar");
+        throw new Error(data.error || "Error al reclamar");
       }
 
       if (onFeedback) onFeedback('¡Transferencia reclamada y copiada!', 'success');
@@ -108,7 +109,7 @@ const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
         scope="row" 
         sx={{ fontWeight: 'medium' }}
       >
-        <Tooltip title={isMine ? "Copiado y en tu historial" : "Click para Copiar y Reclamar"} arrow>
+        <Tooltip title={claimed_by ? "Solo copiar (Ya reclamado)" : "Click para Copiar y Reclamar"} arrow>
           <Box 
             onClick={handleCopyAndClaim}
             onMouseEnter={() => setIsHovered(true)}
@@ -128,7 +129,7 @@ const Transferencia = ({ transferencia, onClaimSuccess, onFeedback }) => {
             ) : isMine ? (
                 <AssignmentIndIcon fontSize="small" />
             ) : (
-                isHovered && <ContentCopyIcon fontSize="small" color="action" />
+                isHovered && !claimed_by && <ContentCopyIcon fontSize="small" color="action" />
             )}
           </Box>
         </Tooltip>
