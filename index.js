@@ -48,8 +48,6 @@ app.post("/webhook", async (req, res) => {
     }
     // 3. Detección IPN Legacy (Topic en Body)
     else if (body.topic === "payment" && body.resource) {
-       // Extraer ID de la URL del recurso
-       // Ejemplo resource: https://.../payments/123456
        const parts = body.resource.split("/");
        paymentId = parts[parts.length - 1];
        source = "IPN (Body)";
@@ -65,22 +63,47 @@ app.post("/webhook", async (req, res) => {
       
       const paymentDetails = await payment.get({ id: paymentId });
 
-      console.log("✅ DATOS DEL PAGO:");
-      console.log("------------------");
-      console.log(`ID: ${paymentDetails.id}`);
-      console.log(`Estado: ${paymentDetails.status}`);
-      console.log(`Monto: ${paymentDetails.transaction_amount}`);
-      console.log(`Desc: ${paymentDetails.description}`);
-      console.log("------------------");
+      console.log("✅ DATOS COMPLETOS DEL PAGO:");
+      console.log("=========================================");
+      console.log(`🆔 ID Transacción:   ${paymentDetails.id}`);
+      console.log(`📅 Fecha Aprobado:   ${paymentDetails.date_approved}`);
+      console.log(`📊 Estado:           ${paymentDetails.status} (${paymentDetails.status_detail})`);
+      console.log(`💰 Monto Bruto:      $${paymentDetails.transaction_amount} ${paymentDetails.currency_id}`);
+      
+      // Detalles financieros (útil para ver comisiones y neto recibido)
+      if (paymentDetails.transaction_details) {
+        console.log(`wm Monto Neto:       $${paymentDetails.transaction_details.net_received_amount}`);
+        console.log(`📉 Comisión MP:      $${paymentDetails.fee_details && paymentDetails.fee_details.length > 0 ? paymentDetails.fee_details[0].amount : 0}`);
+      }
+
+      console.log(`💳 Método de Pago:   ${paymentDetails.payment_method_id} (${paymentDetails.payment_type_id})`);
+      console.log(`📝 Descripción:      ${paymentDetails.description}`);
+      
+      // Información del Pagador
+      if (paymentDetails.payer) {
+        console.log("-----------------------------------------");
+        console.log("👤 INFORMACIÓN DEL PAGADOR:");
+        console.log(`   - Email:          ${paymentDetails.payer.email}`);
+        console.log(`   - ID Usuario MP:  ${paymentDetails.payer.id}`);
+        // Identificación (DNI/CUIT) a veces viene null en transferencias simples
+        if (paymentDetails.payer.identification) {
+            console.log(`   - Documento:      ${paymentDetails.payer.identification.type} ${paymentDetails.payer.identification.number}`);
+        }
+      }
+
+      // Referencia Externa (útil para unir con tu base de datos propia)
+      if (paymentDetails.external_reference) {
+        console.log(`🔗 Ref. Externa:     ${paymentDetails.external_reference}`);
+      }
+      
+      console.log("=========================================");
+
     } else {
-      // Solo logueamos si no es un evento de pago (para depuración)
       // console.log("ℹ️ Evento recibido sin ID de pago compatible.");
     }
 
   } catch (error) {
-    // Manejo de errores silencioso para no crashear el servidor
-    // El error más común al probar es "Payment not found" porque el ID es falso
-    console.error("⚠️ Error procesando pago (Posiblemente ID de prueba inválido):", error.message);
+    console.error("⚠️ Error procesando pago:", error.message);
   }
 });
 
