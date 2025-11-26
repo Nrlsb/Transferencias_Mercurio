@@ -36,8 +36,10 @@ app.get("/", (req, res) => {
   res.send("Servidor de webhooks activo.");
 });
 
+const authMiddleware = require("./authMiddleware");
+
 // Ruta para obtener todas las transferencias para el frontend
-app.get("/api/transferencias", async (req, res) => {
+app.get("/api/transferencias", authMiddleware, async (req, res) => {
   console.log("🚚 Solicitud recibida en /api/transferencias");
   const { monto, dni, fecha } = req.query;
 
