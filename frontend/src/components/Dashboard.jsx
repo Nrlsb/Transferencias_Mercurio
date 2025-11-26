@@ -26,8 +26,9 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 
 function Dashboard({ session }) {
   const [transferencias, setTransferencias] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Inicializamos en false para esperar filtro
   const [error, setError] = useState(null);
+  const [filtersApplied, setFiltersApplied] = useState(false); // Nuevo estado para controlar mensaje inicial
 
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
@@ -38,7 +39,7 @@ function Dashboard({ session }) {
     setError(null);
 
     if (!session?.access_token) {
-        setError("No hay una sesión de usuario válida. Por favor, inicie sesión de nuevo.");
+        setError("No hay una sesión de usuario válida.");
         setLoading(false);
         return;
     }
@@ -53,8 +54,8 @@ function Dashboard({ session }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'La respuesta del servidor no es un JSON válido.' }));
-        throw new Error(`Error ${response.status}: ${errorData.error}`);
+        const errorData = await response.json().catch(() => ({ error: 'Error del servidor' }));
+        throw new Error(errorData.error);
       }
       
       const data = await response.json();
@@ -66,12 +67,20 @@ function Dashboard({ session }) {
     }
   };
 
-  useEffect(() => {
-    fetchTransferencias();
-  }, []);
+  // Eliminamos el useEffect que cargaba todo al inicio para respetar la lógica de "requiere 2 filtros"
+  // y evitar cargas masivas innecesarias.
 
   const handleFilter = (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault();
+    
+    // Validación de filtros mínimos (Frontend)
+    const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
+    if(activeFilters < 2) {
+        setError("Por favor, ingrese al menos 2 criterios de búsqueda.");
+        return;
+    }
+
+    setFiltersApplied(true);
     const params = new URLSearchParams();
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
@@ -83,13 +92,18 @@ function Dashboard({ session }) {
     fetchTransferencias(`?${params.toString()}`);
   };
 
+  // Función para recargar la lista si se reclama una transferencia
+  const handleTransferenciaClaimed = () => {
+    // Volvemos a ejecutar la búsqueda actual para actualizar el estado visual (claimed_by)
+    handleFilter(null);
+  };
+
   const handleLogout = () => {
     supabase.auth.signOut();
   };
   
   return (
     <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
-      {/* AppBar Full Width */}
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
         <Container maxWidth="xl">
             <Toolbar disableGutters>
@@ -115,14 +129,11 @@ function Dashboard({ session }) {
         </Container>
       </AppBar>
 
-      {/* Contenido principal centrado pero responsivo */}
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3, color: 'text.primary' }}>
-            Historial de Transferencias
+            Búsqueda de Transferencias
         </Typography>
 
-        {/* Filtros */}
         <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
           <Box component="form" onSubmit={handleFilter}>
             <Grid container spacing={2} alignItems="center">
@@ -179,7 +190,6 @@ function Dashboard({ session }) {
           </Box>
         </Paper>
 
-        {/* Tabla */}
         <Box>
           {loading && (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -193,7 +203,7 @@ function Dashboard({ session }) {
             </Alert>
           )}
 
-          {!loading && !error && (
+          {!loading && !error && filtersApplied && (
             <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
                 <TableContainer sx={{ maxHeight: 600 }}>
                 <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
@@ -211,13 +221,17 @@ function Dashboard({ session }) {
                     <TableBody>
                     {transferencias.length > 0 ? (
                         transferencias.map(transferencia => (
-                        <Transferencia key={transferencia.id_pago} transferencia={transferencia} />
+                        <Transferencia 
+                            key={transferencia.id_pago} 
+                            transferencia={transferencia} 
+                            onClaimSuccess={handleTransferenciaClaimed}
+                        />
                         ))
                     ) : (
                         <TableRow>
                         <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                             <Typography variant="body1" color="text.secondary">
-                                No se encontraron transferencias con los filtros aplicados.
+                                No se encontraron transferencias disponibles con los filtros aplicados.
                             </Typography>
                         </TableCell>
                         </TableRow>
@@ -226,6 +240,14 @@ function Dashboard({ session }) {
                 </Table>
                 </TableContainer>
             </Paper>
+          )}
+          
+          {!filtersApplied && !loading && (
+             <Box sx={{ textAlign: 'center', mt: 4 }}>
+                <Typography color="text.secondary">
+                    Aplique al menos 2 filtros para buscar transferencias.
+                </Typography>
+             </Box>
           )}
         </Box>
 
