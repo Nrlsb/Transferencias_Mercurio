@@ -27,9 +27,9 @@ class TransferenciaService {
     }
 
     // 2. Construcción de Query
-    // Si es Admin, hacemos join con usuarios para traer el email del reclamador
+    // CORRECCIÓN AQUÍ: Usamos !fk_claimed_by para desambiguar la relación
     let selectQuery = isAdmin 
-        ? '*, usuarios(email)' // IMPORTANTE: Requiere Foreign Key en DB: transferencias.claimed_by -> usuarios.id
+        ? '*, usuarios!fk_claimed_by(email)' 
         : '*';
 
     let query = supabase
@@ -38,9 +38,7 @@ class TransferenciaService {
 
     // 3. Aplicación de Scopes (Permisos de visualización)
     if (isAdmin) {
-        // Admin ve todo, no filtramos por claimed_by
-        // Opcional: Si el admin quiere ver solo sus reclamos, podría añadirse lógica de filtro aquí, 
-        // pero por defecto ve el "Global".
+        // Admin ve todo
     } else if (isHistoryMode) {
         query = query.eq('claimed_by', userId);
     } else {
@@ -77,7 +75,7 @@ class TransferenciaService {
     const { data, error } = await query;
 
     if (error) {
-        console.error("DB Error:", error.message);
+        console.error("DB Error:", error.message); // Esto nos ayudó a encontrar el problema
         throw new Error('Error al consultar la base de datos');
     }
 
