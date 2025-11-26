@@ -38,7 +38,7 @@ function Dashboard({ session, onLogout }) {
   // Estado para controlar las pestañas (0: Buscar, 1: Historial)
   const [tabValue, setTabValue] = useState(0);
 
-  // Filtros Búsqueda Comunes
+  // Filtros Búsqueda Comunes (Solo visibles para User ahora)
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState(''); // Fecha puntual (Usuarios)
@@ -128,6 +128,9 @@ function Dashboard({ session, onLogout }) {
     }
 
     const params = new URLSearchParams();
+    
+    // Solo agregamos monto y DNI si no es admin (o si quisieras que el admin los use, pero la UI los oculta)
+    // Como la UI los oculta para admin, estos estarán vacíos o no se tocarán, así que está bien dejarlos
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
 
@@ -215,39 +218,44 @@ function Dashboard({ session, onLogout }) {
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
-                        {/* Filtros Comunes */}
-                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
-                            <TextField
-                            fullWidth
-                            placeholder="Monto Exacto"
-                            type="number"
-                            label="Monto"
-                            variant="outlined"
-                            value={montoFilter}
-                            onChange={(e) => setMontoFilter(e.target.value)}
-                            size="small"
-                            InputProps={{
-                                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                            }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
-                            <TextField
-                            fullWidth
-                            placeholder="DNI"
-                            label="DNI del Pagador"
-                            type="text"
-                            variant="outlined"
-                            value={dniFilter}
-                            onChange={(e) => setDniFilter(e.target.value)}
-                            size="small"
-                            />
-                        </Grid>
+                        
+                        {/* 1. Filtros SOLO para Usuarios (Monto y DNI) */}
+                        {!isAdmin && (
+                            <>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <TextField
+                                    fullWidth
+                                    placeholder="Monto Exacto"
+                                    type="number"
+                                    label="Monto"
+                                    variant="outlined"
+                                    value={montoFilter}
+                                    onChange={(e) => setMontoFilter(e.target.value)}
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                    }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <TextField
+                                    fullWidth
+                                    placeholder="DNI"
+                                    label="DNI del Pagador"
+                                    type="text"
+                                    variant="outlined"
+                                    value={dniFilter}
+                                    onChange={(e) => setDniFilter(e.target.value)}
+                                    size="small"
+                                    />
+                                </Grid>
+                            </>
+                        )}
 
-                        {/* Filtros Específicos ADMIN vs USER */}
+                        {/* 2. Filtros Específicos ADMIN vs USER (Resto de campos) */}
                         {isAdmin ? (
                             <>
-                                <Grid item xs={12} sm={6} md={2}>
+                                <Grid item xs={12} sm={6} md={3}>
                                     <TextField
                                     fullWidth
                                     placeholder="email@ejemplo.com"
@@ -259,7 +267,7 @@ function Dashboard({ session, onLogout }) {
                                     size="small"
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={2}>
+                                <Grid item xs={12} sm={6} md={3}>
                                     <TextField
                                     fullWidth
                                     label="Desde"
@@ -271,7 +279,7 @@ function Dashboard({ session, onLogout }) {
                                     InputLabelProps={{ shrink: true }}
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={2}>
+                                <Grid item xs={12} sm={6} md={3}>
                                     <TextField
                                     fullWidth
                                     label="Hasta"
@@ -297,7 +305,7 @@ function Dashboard({ session, onLogout }) {
                             </Grid>
                         )}
 
-                        <Grid item xs={12} sm={6} md={isAdmin ? 2 : 3}>
+                        <Grid item xs={12} sm={6} md={3}>
                             <Button 
                             type="submit" 
                             variant="contained" 
