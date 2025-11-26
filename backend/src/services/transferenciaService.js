@@ -13,6 +13,11 @@ class TransferenciaService {
 
     // 1. Validación de reglas de negocio para Búsqueda Pública
     if (!isHistoryMode) {
+        // Validar longitud mínima de DNI si está presente
+        if (dni && dni.length < 8) {
+            throw new Error('El DNI debe tener al menos 8 números para realizar la búsqueda.');
+        }
+
         // Creamos un array seguro con los valores de los filtros
         const activeFilters = [monto, dni, fecha].filter(val => val !== undefined && val !== null && val !== '');
         
@@ -37,10 +42,7 @@ class TransferenciaService {
     }
 
     if (dni) {
-        // CORRECCIÓN CRÍTICA AQUÍ:
-        // Usamos ->> en lugar de -> para 'number'.
-        // ->  devuelve JSONB (falla con ilike)
-        // ->> devuelve TEXT (funciona con ilike)
+        // Usamos ->> para extraer como texto y poder usar ilike
         query = query.filter('datos_completos->payer->identification->>number', 'ilike', `%${dni}%`);
     }
 
