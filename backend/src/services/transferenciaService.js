@@ -9,7 +9,7 @@ class TransferenciaService {
    * - Si history=false (y no admin): Exige filtros.
    */
   async getTransferencias(userId, isAdmin, filters = {}) {
-    const { monto, dni, fecha, history, emailReclamador, fechaDesde, fechaHasta } = filters || {};
+    const { monto, dni, fecha, history, emailReclamador, fechaDesde, fechaHasta, soloReclamados } = filters || {};
     const isHistoryMode = history === 'true';
 
     // 1. Validación de reglas de negocio para Búsqueda Pública (Solo NO Admins)
@@ -27,8 +27,6 @@ class TransferenciaService {
     }
 
     // 2. Construcción de Query
-    // Si filtramos por email del reclamador, necesitamos un INNER JOIN (!inner) para que el filtro aplique
-    // Si no, usamos un LEFT JOIN estándar para traer el dato si existe
     let joinType = emailReclamador ? '!inner' : '';
     let selectQuery = isAdmin 
         ? `*, usuarios!fk_claimed_by${joinType}(email)` 
@@ -43,9 +41,14 @@ class TransferenciaService {
         // Admin ve todo
         // Filtro específico de Admin: Por Email de quien reclamó
         if (emailReclamador) {
-            // Nota: Al usar !inner en el select, podemos filtrar por la tabla relacionada
             query = query.ilike('usuarios.email', `%${emailReclamador}%`);
         }
+        
+        // Nuevo Filtro: Ver solo transferencias usadas/reclamadas
+        if (soloReclamados === 'true') {
+            query = query.not('claimed_by', 'is', null);
+        }
+
     } else if (isHistoryMode) {
         query = query.eq('claimed_by', userId);
     } else {
@@ -59,19 +62,29 @@ class TransferenciaService {
     }
 
     if (dni) {
-        // Usamos ->> para extraer como texto y poder usar ilike
         query = query.filter('datos_completos->payer->identification->>number', 'ilike', `%${dni}%`);
     }
 
-    // 5. Lógica de Fechas
-    // Si es admin y manda rango, usamos rango. Si no, lógica normal o específica.
+    // 5. Lógica de Fechas (Mejorada para rangos de día completo)
     if (fechaDesde || fechaHasta) {
-        if (fechaDesde) query = query.gte('fecha_aprobado', new Date(fechaDesde).toISOString());
-        if (fechaHasta) query = query.lte('fecha_aprobado', new Date(fechaHasta).toISOString());
+        if (fechaDesde) {
+            // Aseguramos inicio del día (00:00:00) local o UTC según input, aquí asumimos input YYYY-MM-DD
+            // Al crear new Date('2023-01-01'), JS asume UTC 00:00 si es ISO, o local si es formato corto.
+            // Para consistencia, agregamos la hora explícita si viene solo fecha.
+            const fromDate = new Date(fechaDesde);
+            // Si el input es 'date', viene YYYY-MM-DD. 
+            // Reseteamos a 00:00:00 para asegurar cobertura completa
+            fromDate.setHours(0, 0, 0, 0);
+            query = query.gte('fecha_aprobado', fromDate.toISOString());
+        }
+        if (fechaHasta) {
+            // Aseguramos fin del día (23:59:59)
+            const toDate = new Date(fechaHasta);
+            toDate.setHours(23, 59, 59, 999);
+            query = query.lte('fecha_aprobado', toDate.toISOString());
+        }
     } else if (fecha) {
         // Lógica Legacy / Usuario Normal: Ventana de 10 minutos
-        // Si el admin usa el campo "fecha" exacto (input viejo), se mantiene esta lógica, 
-        // pero ahora tiene los campos de rango.
         const fechaTarget = new Date(fecha);
         if (!isNaN(fechaTarget.getTime())) {
             const diezMinutosEnMs = 10 * 60 * 1000;
@@ -94,13 +107,10 @@ class TransferenciaService {
         throw new Error('Error al consultar la base de datos');
     }
 
-    // Retornamos array vacío si data es null/undefined
     return data || [];
   }
 
-  /**
-   * Reclama una transferencia de forma ATÓMICA.
-   */
+  // ... claimTransferencia y createTransferenciaFromWebhook se mantienen igual ...
   async claimTransferencia(idPago, userId) {
     const { data, error } = await supabase
       .from('transferencias')
@@ -111,7 +121,6 @@ class TransferenciaService {
 
     if (error) throw new Error(error.message);
 
-    // Validación segura de data
     if (!data || data.length === 0) {
         const { data: checkOwner } = await supabase
             .from('transferencias')
@@ -129,9 +138,6 @@ class TransferenciaService {
     return data[0];
   }
 
-  /**
-   * Guarda desde Webhook
-   */
   async createTransferenciaFromWebhook(paymentDetails) {
     const { data: existing } = await supabase
         .from('transferencias')

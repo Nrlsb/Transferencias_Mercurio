@@ -22,7 +22,9 @@ import {
   Snackbar,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -38,7 +40,7 @@ function Dashboard({ session, onLogout }) {
   // Estado para controlar las pestañas (0: Buscar, 1: Historial)
   const [tabValue, setTabValue] = useState(0);
 
-  // Filtros Búsqueda Comunes (Solo visibles para User ahora)
+  // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState(''); // Fecha puntual (Usuarios)
@@ -47,6 +49,7 @@ function Dashboard({ session, onLogout }) {
   const [adminUserFilter, setAdminUserFilter] = useState(''); // Email quien reclamo
   const [dateFromFilter, setDateFromFilter] = useState('');   // Fecha Desde
   const [dateToFilter, setDateToFilter] = useState('');       // Fecha Hasta
+  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false); // Nuevo filtro Admin
 
   const [filtersApplied, setFiltersApplied] = useState(false);
 
@@ -57,16 +60,13 @@ function Dashboard({ session, onLogout }) {
   const isAdmin = session?.user?.is_admin === true;
 
   useEffect(() => {
-    // Si es admin, cargamos todo automáticamente al iniciar (comportamiento de admin)
-    // Si no, respetamos la lógica de tabs
+    // Si es admin, cargamos todo automáticamente al iniciar
     if (isAdmin) {
         fetchTransferencias();
     } else {
         if (tabValue === 1) {
-            // Si vamos a la pestaña Historial, cargamos datos inmediatamente
             fetchTransferencias('?history=true');
         } else {
-            // Si volvemos a Búsqueda, limpiamos la tabla si no había búsqueda previa
             setTransferencias([]);
             setFiltersApplied(false);
         }
@@ -129,18 +129,19 @@ function Dashboard({ session, onLogout }) {
 
     const params = new URLSearchParams();
     
-    // Solo agregamos monto y DNI si no es admin (o si quisieras que el admin los use, pero la UI los oculta)
-    // Como la UI los oculta para admin, estos estarán vacíos o no se tocarán, así que está bien dejarlos
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
 
     if (isAdmin) {
-        // Filtros Admin: Rango de fechas y Usuario
+        // Filtros Admin
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
-        if (dateFromFilter) params.append('fechaDesde', new Date(dateFromFilter).toISOString());
-        if (dateToFilter) params.append('fechaHasta', new Date(dateToFilter).toISOString());
+        // Enviamos la fecha tal cual (YYYY-MM-DD), el backend se encarga de las horas
+        if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
+        if (dateToFilter) params.append('fechaHasta', dateToFilter);
+        // Nuevo filtro de solo reclamados
+        if (onlyClaimedFilter) params.append('soloReclamados', 'true');
     } else {
-        // Filtro Usuario: Fecha puntual
+        // Filtro Usuario: Fecha puntual con hora (datetime-local)
         if (fechaFilter) {
             const utcDateString = new Date(fechaFilter).toISOString();
             params.append('fecha', utcDateString);
@@ -154,10 +155,6 @@ function Dashboard({ session, onLogout }) {
 
   const handleTransferenciaClaimed = () => {
     if (isAdmin) {
-        // Admin recarga manteniendo filtros actuales si fuera necesario, 
-        // por simplicidad aquí llamamos al submit simulado o fetch directo
-        // fetchTransferencias(); 
-        // Mejor simulamos un submit para no perder filtros activos
         handleSearchSubmit(null);
     } else if (tabValue === 0 && filtersApplied) {
         handleSearchSubmit(null);
@@ -252,7 +249,7 @@ function Dashboard({ session, onLogout }) {
                             </>
                         )}
 
-                        {/* 2. Filtros Específicos ADMIN vs USER (Resto de campos) */}
+                        {/* 2. Filtros Específicos ADMIN vs USER */}
                         {isAdmin ? (
                             <>
                                 <Grid item xs={12} sm={6} md={3}>
@@ -267,11 +264,11 @@ function Dashboard({ session, onLogout }) {
                                     size="small"
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
+                                <Grid item xs={12} sm={6} md={2}>
                                     <TextField
                                     fullWidth
                                     label="Desde"
-                                    type="datetime-local"
+                                    type="date" // CAMBIO: Solo fecha
                                     variant="outlined"
                                     value={dateFromFilter}
                                     onChange={(e) => setDateFromFilter(e.target.value)}
@@ -279,16 +276,30 @@ function Dashboard({ session, onLogout }) {
                                     InputLabelProps={{ shrink: true }}
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
+                                <Grid item xs={12} sm={6} md={2}>
                                     <TextField
                                     fullWidth
                                     label="Hasta"
-                                    type="datetime-local"
+                                    type="date" // CAMBIO: Solo fecha
                                     variant="outlined"
                                     value={dateToFilter}
                                     onChange={(e) => setDateToFilter(e.target.value)}
                                     size="small"
                                     InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2}>
+                                    {/* NUEVO FILTRO CHECKBOX */}
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox 
+                                                checked={onlyClaimedFilter}
+                                                onChange={(e) => setOnlyClaimedFilter(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label="Solo Reclamados"
+                                        sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
                                     />
                                 </Grid>
                             </>
@@ -305,7 +316,7 @@ function Dashboard({ session, onLogout }) {
                             </Grid>
                         )}
 
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={isAdmin ? 3 : 3}>
                             <Button 
                             type="submit" 
                             variant="contained" 
@@ -322,6 +333,8 @@ function Dashboard({ session, onLogout }) {
             </Paper>
         )}
 
+        {/* ... resto del código (Tabla, etc) igual ... */}
+        
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
             {isAdmin ? 'Gestión Global de Transferencias' : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
         </Typography>
