@@ -14,8 +14,13 @@ function App() {
     // Definimos una función asíncrona para traer los datos
     const fetchTransferencias = async () => {
       try {
-        // Gracias al proxy, solo necesitamos usar la ruta relativa
-        const response = await fetch('/api/transferencias');
+        // Construimos la URL completa para la API.
+        // En producción, usará la variable de entorno de Vercel.
+        // En desarrollo, esta variable no existirá y el fetch fallará si no se define en un .env.local,
+        // pero el proxy de Vite seguirá funcionando para las pruebas locales si se usa la ruta relativa.
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias`;
+        const response = await fetch(apiUrl);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
