@@ -3,6 +3,7 @@ const transferenciaService = require('../services/transferenciaService');
 const getTransferencias = async (req, res) => {
   try {
     const userId = req.user.id; // Viene del authMiddleware
+    // Pasamos req.query completo, que ahora puede incluir ?history=true
     const filters = req.query;
 
     const resultados = await transferenciaService.getTransferencias(userId, filters);
