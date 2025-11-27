@@ -6,18 +6,15 @@ import {
   Chip,
   Box,
   Tooltip,
-  IconButton,
-  CircularProgress
+  IconButton
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
-import SyncIcon from '@mui/icons-material/Sync'; // Icono para actualizar
 
 const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isAdmin }) => {
   const { id_pago, claimed_by, datos_completos, usuarios, email_pagador } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
-  const [loadingSync, setLoadingSync] = useState(false); // Estado para la carga del sync
   const [isHovered, setIsHovered] = useState(false);
 
   // Verificamos si la transferencia ya es del usuario actual
@@ -37,23 +34,29 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     point_of_interaction
   } = datosParsed;
 
-  // --- LÓGICA DE EXTRACCIÓN DE NOMBRE ---
+  // --- LÓGICA DE EXTRACCIÓN DE NOMBRE ACTUALIZADA ---
   let displayName = 'Desconocido';
   
+  // 1. PRIORIDAD MÁXIMA: Buscar en información bancaria (Lo que pediste explícitamente)
+  // Ruta: point_of_interaction.transaction_data.bank_info.payer.long_name
   if (point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
     displayName = point_of_interaction.transaction_data.bank_info.payer.long_name;
   }
+  // 2. Intentar buscar Nombre y Apellido en objeto payer (Cuenta Mercado Pago)
   else if (payer?.first_name || payer?.last_name) {
     displayName = `${payer.first_name || ''} ${payer.last_name || ''}`.trim();
   }
+  // 3. Fallback a Email del objeto payer
   else if (payer?.email) {
     displayName = payer.email;
   }
+  // 4. Fallback a columna de base de datos
   else if (email_pagador) {
     displayName = email_pagador;
   }
-  // ------------------------------------
+  // --------------------------------------------------
 
+  // Lógica de Identificación (DNI/CUIL)
   const identificationNumber = payer?.identification?.number || null;
   const identificationType = payer?.identification?.type || 'ID';
   
@@ -61,9 +64,19 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     ? `${identificationType}: ${identificationNumber}`
     : 'ID No Disponible';
 
+
   const formattedDate = date_approved 
     ? new Date(date_approved).toLocaleDateString() + ' ' + new Date(date_approved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'N/A';
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approved': return 'success';
+      case 'pending': return 'warning';
+      case 'rejected': return 'error';
+      default: return 'default';
+    }
+  };
 
   const getStatusLabel = (status) => {
       switch (status) {
@@ -73,15 +86,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
           case 'accredited': return 'Acreditado';
           default: return status;
       }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved': return 'success';
-      case 'pending': return 'warning';
-      case 'rejected': return 'error';
-      default: return 'default';
-    }
   };
 
   const handleCopyAndClaim = async () => {
@@ -107,7 +111,9 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.error || "Error al reclamar");
+      if (!response.ok) {
+        throw new Error(data.error || "Error al reclamar");
+      }
 
       if (onFeedback) onFeedback('¡Transferencia reclamada y copiada!', 'success');
       if (onClaimSuccess) onClaimSuccess();
@@ -147,32 +153,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
     } catch (error) {
         if (onFeedback) onFeedback(error.message, 'error');
-    }
-  };
-
-  // NUEVA FUNCION: Sincronizar datos manualmente
-  const handleSync = async () => {
-    if(!isAdmin) return;
-    
-    try {
-        setLoadingSync(true);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${id_pago}/sync`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) throw new Error("Error al sincronizar datos");
-
-        if (onFeedback) onFeedback('Datos actualizados desde Mercado Pago', 'success');
-        if (onClaimSuccess) onClaimSuccess(); // Recarga la lista para ver los nuevos nombres
-
-    } catch (error) {
-        if (onFeedback) onFeedback(error.message, 'error');
-    } finally {
-        setLoadingSync(false);
     }
   };
 
@@ -219,26 +199,15 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
       <TableCell>{formattedDate}</TableCell>
 
-      {/* CELDA DE DATOS DEL PAGADOR CON BOTÓN DE SYNC */}
+      {/* CELDA DE PAGADOR */}
       <TableCell>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {displayName}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.70rem' }}>
-                    {displayIdentification}
-                </Typography>
-            </Box>
-            
-            {/* Botón de Sincronización (Solo Admin) */}
-            {isAdmin && (
-                <Tooltip title="Actualizar datos desde MP">
-                    <IconButton size="small" onClick={handleSync} disabled={loadingSync}>
-                        {loadingSync ? <CircularProgress size={16} /> : <SyncIcon fontSize="small" color="action" />}
-                    </IconButton>
-                </Tooltip>
-            )}
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {displayName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.70rem' }}>
+                {displayIdentification}
+            </Typography>
         </Box>
       </TableCell>
 
