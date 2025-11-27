@@ -34,16 +34,17 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     point_of_interaction
   } = datosParsed;
 
-  // Lógica Avanzada de Extracción de Nombre del Pagador
+  // --- LÓGICA DE EXTRACCIÓN DE NOMBRE ACTUALIZADA ---
   let displayName = 'Desconocido';
   
-  // 1. Intentar buscar Nombre y Apellido en objeto payer
-  if (payer?.first_name || payer?.last_name) {
-    displayName = `${payer.first_name || ''} ${payer.last_name || ''}`.trim();
-  }
-  // 2. Intentar buscar en información bancaria (común en transferencias)
-  else if (point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
+  // 1. PRIORIDAD MÁXIMA: Buscar en información bancaria (Lo que pediste explícitamente)
+  // Ruta: point_of_interaction.transaction_data.bank_info.payer.long_name
+  if (point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
     displayName = point_of_interaction.transaction_data.bank_info.payer.long_name;
+  }
+  // 2. Intentar buscar Nombre y Apellido en objeto payer (Cuenta Mercado Pago)
+  else if (payer?.first_name || payer?.last_name) {
+    displayName = `${payer.first_name || ''} ${payer.last_name || ''}`.trim();
   }
   // 3. Fallback a Email del objeto payer
   else if (payer?.email) {
@@ -53,6 +54,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
   else if (email_pagador) {
     displayName = email_pagador;
   }
+  // --------------------------------------------------
 
   // Lógica de Identificación (DNI/CUIL)
   const identificationNumber = payer?.identification?.number || null;
@@ -123,7 +125,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     }
   };
 
-  // Función para copiar solo el monto (valor) con coma
   const handleCopyAmount = () => {
     if (transaction_amount) {
         const montoConComa = transaction_amount.toString().replace('.', ',');
@@ -198,7 +199,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
       <TableCell>{formattedDate}</TableCell>
 
-      {/* CELDA DE DATOS DEL PAGADOR MEJORADA */}
+      {/* CELDA DE PAGADOR */}
       <TableCell>
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
