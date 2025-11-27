@@ -53,7 +53,7 @@ const confirmBatch = async (req, res) => {
   }
 };
 
-// --- CONTROLADORES TABLA MANUAL (OTROS BANCOS) ---
+// --- CONTROLADORES TABLA MANUAL ---
 
 const getUsersList = async (req, res) => {
   try {
@@ -79,7 +79,6 @@ const getManualTransfers = async (req, res) => {
 
 const getMyManualTransfers = async (req, res) => {
   try {
-    // Usuario normal consulta SUS manuales
     const userId = req.user.id;
     const result = await transferenciaService.getManualTransfersByUserId(userId);
     res.status(200).json(result);
@@ -92,23 +91,29 @@ const getMyManualTransfers = async (req, res) => {
 const createManualTransfer = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
-    
     const { id_transaccion, banco, monto, userId } = req.body;
-
-    if (!id_transaccion || !banco || !monto || !userId) {
-      return res.status(400).json({ error: "Todos los campos son obligatorios." });
-    }
+    if (!id_transaccion || !banco || !monto || !userId) return res.status(400).json({ error: "Todos los campos son obligatorios." });
 
     const result = await transferenciaService.createManualTransfer({ id_transaccion, banco, monto, userId });
     res.status(201).json({ message: "Transferencia manual creada exitosamente.", data: result });
-
   } catch (error) {
     console.error("❌ Error en createManualTransfer:", error.message);
-    if (error.message.includes('duplicate key')) {
-        return res.status(409).json({ error: "El ID de transacción ya existe en manuales." });
-    }
+    if (error.message.includes('duplicate key')) return res.status(409).json({ error: "El ID de transacción ya existe en manuales." });
     res.status(500).json({ error: "Error al crear la transferencia manual." });
   }
+};
+
+// NUEVO: Marcar manual como reclamada
+const claimManualTransfer = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params; // ID de la fila (no transaccion) o transaccion
+        const result = await transferenciaService.claimManualTransfer(id, userId);
+        res.status(200).json({ message: "Marcada como reclamada", data: result });
+    } catch (error) {
+        console.error("❌ Error en claimManualTransfer:", error.message);
+        res.status(500).json({ error: "No se pudo marcar la transferencia." });
+    }
 };
 
 module.exports = {
@@ -119,5 +124,6 @@ module.exports = {
   getUsersList,
   getManualTransfers,
   getMyManualTransfers,
-  createManualTransfer
+  createManualTransfer,
+  claimManualTransfer
 };

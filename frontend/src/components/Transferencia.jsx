@@ -12,6 +12,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 const Transferencia = ({ 
     transferencia, 
@@ -23,42 +24,46 @@ const Transferencia = ({
     isSelected,
     onToggleSelect
 }) => {
-  // Detectar si es manual
+  // Detectar tipo
   const isManual = !!transferencia.banco;
 
-  // Normalización de datos (Manual vs Mercado Pago)
+  // Normalización de datos
   const idPago = isManual ? transferencia.id_transaccion : transferencia.id_pago;
-  const ownerId = isManual ? transferencia.user_id : transferencia.claimed_by;
   
-  // Verificamos propiedad
-  const isMine = !!ownerId && ownerId === session?.user?.id; 
+  // Lógica de "Ya Reclamado"
+  // MP: claimed_by no es nulo.
+  // Manual: fecha_reclamo no es nula.
+  const isClaimedMP = !isManual && !!transferencia.claimed_by;
+  const isClaimedManual = isManual && !!transferencia.fecha_reclamo;
+  
+  // Propiedad (¿Es mía?)
+  const isMine = isManual 
+    ? transferencia.user_id === session?.user?.id 
+    : transferencia.claimed_by === session?.user?.id;
 
-  // Datos MP
+  // Si ya fue usada por mí (para feedback visual)
+  const isUsedByMe = isManual ? isClaimedManual : isMine;
+
+  // Parsing Datos MP
   const datosParsed = !isManual && typeof transferencia.datos_completos === 'string' 
     ? JSON.parse(transferencia.datos_completos) 
     : (transferencia.datos_completos || {});
 
-  // Extracción de Fecha
   const rawDate = isManual ? transferencia.fecha_carga : datosParsed.date_approved;
   const formattedDate = rawDate 
     ? new Date(rawDate).toLocaleDateString() + ' ' + new Date(rawDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'N/A';
 
-  // Extracción de Monto
   const monto = isManual ? transferencia.monto : datosParsed.transaction_amount;
-
-  // Extracción de Estado
   const status = isManual ? 'approved' : datosParsed.status;
 
-  // Lógica de Nombre/Descripción
   let displayName = 'Desconocido';
   let displayDescription = transferencia.descripcion || 'SIN DESCRIPCIÓN';
 
   if (isManual) {
-      displayName = 'Manual'; // O podrías poner el nombre del admin si lo tuvieras
+      displayName = 'Asignado Manualmente';
       displayDescription = `Transferencia ${transferencia.banco}`;
   } else {
-      // Lógica MP (Existente)
       if (datosParsed.point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
         displayName = datosParsed.point_of_interaction.transaction_data.bank_info.payer.long_name;
       } else if (datosParsed.payer?.first_name || datosParsed.payer?.last_name) {
@@ -74,44 +79,48 @@ const Transferencia = ({
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const getStatusColor = (st) => {
-    if (isManual) return 'success'; // Manuales siempre verdes/aprobadas
-    switch (st) {
-      case 'approved': return 'success';
-      case 'pending': return 'warning';
-      case 'rejected': return 'error';
-      default: return 'default';
-    }
-  };
-
   const getStatusLabel = (st) => {
       if (isManual) return 'Confirmado';
       switch (st) {
           case 'approved': return 'Aprobado';
           case 'pending': return 'Pendiente';
-          case 'rejected': return 'Rechazado';
-          case 'accredited': return 'Acreditado';
           default: return st;
       }
   };
 
-  // LÓGICA DE COPIADO E IDENTIFICACIÓN
+  // --- LÓGICA UNIFICADA DE CLICK ---
   const handleCopyAndClaim = async () => {
-    // Caso 1: Ya es mío (MP reclamado o Manual asignado) O soy Admin -> Solo copiar
-    if (ownerId || isAdmin || isManual) {
-       navigator.clipboard.writeText(idPago.toString());
-       if (onFeedback) onFeedback(`ID ${idPago} copiado al portapapeles`, 'success');
-       return;
+    // 1. Siempre copiar al portapapeles primero
+    await navigator.clipboard.writeText(idPago.toString());
+
+    // 2. Si soy ADMIN, solo notificamos copiado y terminamos.
+    if (isAdmin) {
+        if (onFeedback) onFeedback(`ID ${idPago} copiado (Admin)`, 'info');
+        return;
     }
 
-    // Caso 2: Es de MP y está libre -> Reclamar y Copiar
+    // 3. Si soy USUARIO:
+    // Si ya está "usada" (claimed/reclamada), solo notificamos copiado.
+    if (isUsedByMe) {
+        if (onFeedback) onFeedback(`ID ${idPago} copiado (Ya reclamado)`, 'info');
+        return;
+    }
+
+    // 4. Si NO está usada, procedemos a "Reclamar" en el backend
     try {
       setLoadingClaim(true);
-      await navigator.clipboard.writeText(idPago.toString());
-
       if (!session?.access_token) throw new Error("No hay sesión activa");
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/claim`, {
+      let url = '';
+      if (isManual) {
+          // Endpoint nuevo para manuales
+          url = `${import.meta.env.VITE_API_BASE_URL}/api/manual-transfers/${idPago}/claim`;
+      } else {
+          // Endpoint existente MP
+          url = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/claim`;
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -120,13 +129,10 @@ const Transferencia = ({
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error al procesar");
 
-      if (!response.ok) {
-        throw new Error(data.error || "Error al reclamar");
-      }
-
-      if (onFeedback) onFeedback('¡Transferencia reclamada y copiada!', 'success');
-      if (onClaimSuccess) onClaimSuccess();
+      if (onFeedback) onFeedback('¡Copiado y Marcado como Reclamado!', 'success');
+      if (onClaimSuccess) onClaimSuccess(); // Recarga la tabla para actualizar iconos
 
     } catch (error) {
       if (onFeedback) onFeedback(error.message, 'error');
@@ -137,7 +143,6 @@ const Transferencia = ({
 
   const handleCopyAmount = () => {
     if (monto) {
-        // Formato con coma para facilitar pegado en Excel/Sheets local
         const montoConComa = monto.toString().replace('.', ',');
         navigator.clipboard.writeText(montoConComa);
         if (onFeedback) onFeedback(`Monto copiado: $${montoConComa}`, 'info');
@@ -145,8 +150,8 @@ const Transferencia = ({
   };
 
   const handleUnclaim = async () => {
-    if(!isAdmin || isManual) return; // No desreclamar manuales por ahora
-    if(!window.confirm("¿Estás seguro de que deseas liberar esta transferencia?")) return;
+    if(!isAdmin || isManual) return; 
+    if(!window.confirm("¿Liberar transferencia?")) return;
 
     try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/unclaim`, {
@@ -156,38 +161,29 @@ const Transferencia = ({
               'Content-Type': 'application/json'
             }
         });
-
-        if (!response.ok) throw new Error("Error al liberar transferencia");
-
-        if (onFeedback) onFeedback('Transferencia liberada exitosamente', 'success');
+        if (!response.ok) throw new Error("Error");
         if (onClaimSuccess) onClaimSuccess(); 
-
-    } catch (error) {
-        if (onFeedback) onFeedback(error.message, 'error');
-    }
+    } catch (error) {}
   };
 
   return (
     <TableRow 
       hover 
       sx={{ 
-        bgcolor: isMine ? (isManual ? '#e8f5e9' : 'action.hover') : 'inherit', // Verde suave si es manual mía
+        // Color de fondo: Verde suave si ya fue reclamada por mí (MP o Manual)
+        bgcolor: isUsedByMe ? '#e8f5e9' : 'inherit',
         transition: 'background-color 0.3s'
       }}
     >
       {isSelectable && (
           <TableCell padding="checkbox">
-              <Checkbox 
-                checked={isSelected || false}
-                onChange={() => onToggleSelect(idPago)}
-                color="primary"
-              />
+              <Checkbox checked={isSelected || false} onChange={() => onToggleSelect(idPago)} color="primary" />
           </TableCell>
       )}
 
-      {/* ID + COPY ACTION */}
+      {/* ID + ACCIÓN PRINCIPAL */}
       <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
-        <Tooltip title="Click para Copiar ID" arrow>
+        <Tooltip title={isAdmin ? "Copiar ID" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
           <Box 
             onClick={handleCopyAndClaim}
             onMouseEnter={() => setIsHovered(true)}
@@ -197,80 +193,71 @@ const Transferencia = ({
               alignItems: 'center', 
               gap: 1, 
               cursor: 'pointer',
-              color: isMine ? 'primary.main' : 'text.primary',
-              '&:hover': { color: 'primary.dark' }
+              color: isUsedByMe ? 'success.main' : 'text.primary',
+              '&:hover': { color: 'primary.main' }
             }}
           >
-            {idPago}
-            {/* Iconografía dinámica */}
+            {/* ÍCONO DE ESTADO */}
             {loadingClaim ? (
                 <Typography variant="caption">...</Typography>
+            ) : isUsedByMe ? (
+                <DoneAllIcon fontSize="small" /> 
             ) : isManual ? (
-                <AccountBalanceIcon fontSize="small" color="success" />
-            ) : isMine ? (
+                <AccountBalanceIcon fontSize="small" color="action" />
+            ) : isMine ? ( 
                 <AssignmentIndIcon fontSize="small" />
             ) : (
-                isHovered && !ownerId && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
+                isHovered && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
             )}
+            
+            {/* TEXTO DEL ID */}
+            <Typography variant="body2" sx={{ fontWeight: isUsedByMe ? 'bold' : 'normal' }}>
+                {idPago}
+            </Typography>
           </Box>
         </Tooltip>
       </TableCell>
       
+      {/* DESCRIPCIÓN / BANCO */}
       <TableCell>
-        <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 500 }}>
-            {isManual ? <Chip label={transferencia.banco} size="small" color="primary" variant="outlined"/> : displayDescription}
-        </Typography>
+        {isManual ? (
+            <Chip label={transferencia.banco} size="small" color={isUsedByMe ? "success" : "primary"} variant="outlined"/>
+        ) : (
+            <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{displayDescription}</Typography>
+        )}
       </TableCell>
 
       <TableCell>{formattedDate}</TableCell>
 
       <TableCell>
-        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                {displayName}
-            </Typography>
-        </Box>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>{displayName}</Typography>
       </TableCell>
 
       <TableCell>
-        <Chip 
-            label={getStatusLabel(status)} 
-            color={getStatusColor(status)} 
-            size="small" 
-            variant="outlined"
-            sx={{ fontWeight: 'bold' }}
-        />
+        <Chip label={getStatusLabel(status)} color={isUsedByMe ? 'success' : (status === 'approved' ? 'success' : 'default')} size="small" variant="outlined" />
       </TableCell>
 
+      {/* ADMIN: USUARIO ASIGNADO / RECLAMADO POR */}
       {isAdmin && (
         <TableCell>
-            {ownerId ? (
+            {(isManual ? transferencia.user_id : transferencia.claimed_by) ? (
                 <Chip 
-                    icon={<AssignmentIndIcon />}
-                    label={transferencia.usuarios?.email || 'Usuario ID: ' + ownerId.slice(0, 8) + '...'} 
+                    icon={isManual && transferencia.fecha_reclamo ? <DoneAllIcon/> : <AssignmentIndIcon />}
+                    label={transferencia.usuarios?.email || 'ID Usuario: ' + (isManual ? transferencia.user_id : transferencia.claimed_by).slice(0, 8)}
                     size="small" 
-                    variant="outlined"
-                    color="primary"
-                    onDelete={!isManual ? handleUnclaim : undefined} // Solo permitir liberar MP
-                    deleteIcon={
-                        !isManual && (
-                        <Tooltip title="Liberar Transferencia">
-                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'error.main', borderRadius: '50%', width: 16, height: 16, color: 'white', fontSize: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'error.dark' } }}>
-                                X
-                            </Box>
-                        </Tooltip>
-                        )
-                    }
+                    variant={isManual && transferencia.fecha_reclamo ? "filled" : "outlined"}
+                    color={isManual && transferencia.fecha_reclamo ? "success" : "primary"}
+                    onDelete={!isManual ? handleUnclaim : undefined}
                 />
             ) : (
-                <Chip icon={<PersonOffIcon />} label="Libre" size="small" variant="outlined" color="default" sx={{ borderStyle: 'dashed' }} />
+                <Chip icon={<PersonOffIcon />} label="Libre" size="small" variant="outlined" />
             )}
         </TableCell>
       )}
 
-      {/* MONTO + COPY ACTION */}
+      {/* MONTO + COPY */}
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-        <Tooltip title="Click para copiar monto" arrow placement="top">
+        <Tooltip title="Copiar Monto" arrow placement="top">
             <Box
                 component="span"
                 onClick={handleCopyAmount}
@@ -279,11 +266,8 @@ const Transferencia = ({
                     display: 'inline-block',
                     padding: '4px 8px',
                     borderRadius: '4px',
-                    color: isManual ? 'success.main' : 'inherit',
-                    '&:hover': { 
-                        bgcolor: 'action.hover',
-                        color: 'primary.main' 
-                    }
+                    color: isUsedByMe ? 'success.dark' : 'inherit',
+                    '&:hover': { bgcolor: 'action.hover', color: 'primary.main' }
                 }}
             >
                 ${parseFloat(monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
