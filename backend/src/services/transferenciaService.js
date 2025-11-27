@@ -108,7 +108,6 @@ class TransferenciaService {
     return data || [];
   }
 
-  // ... claimTransferencia y createTransferenciaFromWebhook se mantienen igual ...
   async claimTransferencia(idPago, userId) {
     const { data, error } = await supabase
       .from('transferencias')
@@ -148,31 +147,53 @@ class TransferenciaService {
     return data[0];
   }
 
+  // Lógica Mejorada: Soporta INSERT o UPDATE (Upsert manual)
   async createTransferenciaFromWebhook(paymentDetails) {
+    // 1. Verificamos si existe
     const { data: existing } = await supabase
         .from('transferencias')
         .select('id_pago')
         .eq('id_pago', paymentDetails.id)
         .single();
     
-    if (existing) return true;
+    // Preparar objeto de datos
+    const datosTransferencia = {
+        id_pago: paymentDetails.id,
+        fecha_aprobado: paymentDetails.date_approved,
+        estado: paymentDetails.status,
+        monto: paymentDetails.transaction_amount,
+        descripcion: paymentDetails.description,
+        email_pagador: paymentDetails.payer ? paymentDetails.payer.email : null,
+        datos_completos: paymentDetails,
+        // IMPORTANTE: No sobreescribimos claimed_by en updates para no perder el reclamo
+    };
 
-    const { error } = await supabase
-      .from('transferencias')
-      .insert([
-        {
-          id_pago: paymentDetails.id,
-          fecha_aprobado: paymentDetails.date_approved,
-          estado: paymentDetails.status,
-          monto: paymentDetails.transaction_amount,
-          descripcion: paymentDetails.description,
-          email_pagador: paymentDetails.payer ? paymentDetails.payer.email : null,
-          datos_completos: paymentDetails,
-          claimed_by: null
-        }
-      ]);
+    if (existing) {
+        // 2. CASO UPDATE: Si ya existe, actualizamos la info (ej: nombre del pagador que llega tarde)
+        console.log(`🔄 Actualizando pago ${paymentDetails.id} con nuevos datos de webhook...`);
+        
+        const { error } = await supabase
+            .from('transferencias')
+            .update({
+                estado: datosTransferencia.estado,
+                datos_completos: datosTransferencia.datos_completos,
+                email_pagador: datosTransferencia.email_pagador
+            })
+            .eq('id_pago', paymentDetails.id);
+            
+        if (error) throw error;
+    } else {
+        // 3. CASO INSERT: Nuevo pago
+        console.log(`✨ Insertando nuevo pago ${paymentDetails.id}...`);
+        
+        // Para insert inicial, aseguramos que claimed_by sea null explícitamente si se requiere
+        const { error } = await supabase
+            .from('transferencias')
+            .insert([{ ...datosTransferencia, claimed_by: null }]);
 
-    if (error) throw error;
+        if (error) throw error;
+    }
+
     return true;
   }
 }
