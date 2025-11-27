@@ -138,7 +138,7 @@ class TransferenciaService {
     return true;
   }
 
-  // --- NUEVOS MÉTODOS PARA TABLA MANUAL ---
+  // --- MÉTODOS MANUALES ---
 
   async getAllUsers() {
     const { data, error } = await supabase.from('usuarios').select('id, email').order('email');
@@ -147,10 +147,22 @@ class TransferenciaService {
   }
 
   async getManualTransfers() {
-    // Traemos la relación con usuarios para mostrar el email del cliente asignado
+    // Admin: Ve todas
     const { data, error } = await supabase
       .from('transferencias_manuales')
       .select('*, usuarios(email)')
+      .order('fecha_carga', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async getManualTransfersByUserId(userId) {
+    // User: Ve solo las suyas
+    const { data, error } = await supabase
+      .from('transferencias_manuales')
+      .select('*')
+      .eq('user_id', userId)
       .order('fecha_carga', { ascending: false });
 
     if (error) throw new Error(error.message);

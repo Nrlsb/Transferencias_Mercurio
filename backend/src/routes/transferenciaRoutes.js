@@ -12,10 +12,11 @@ router.post('/api/transferencias/:id/claim', authMiddleware, transferenciaContro
 router.post('/api/transferencias/:id/unclaim', authMiddleware, transferenciaController.unclaimTransferencia);
 router.post('/api/transferencias/confirm-batch', authMiddleware, transferenciaController.confirmBatch);
 
-// NUEVAS RUTAS: Gestión Manual (Tabla Separada)
+// Rutas Manuales (Admin y User)
 router.get('/api/admin/users', authMiddleware, transferenciaController.getUsersList); 
-router.get('/api/admin/manual-transfers', authMiddleware, transferenciaController.getManualTransfers); // LISTAR MANUALES
-router.post('/api/admin/manual-transfers', authMiddleware, transferenciaController.createManualTransfer); // CREAR MANUAL
+router.get('/api/admin/manual-transfers', authMiddleware, transferenciaController.getManualTransfers); // Admin: Todas
+router.post('/api/admin/manual-transfers', authMiddleware, transferenciaController.createManualTransfer); // Admin: Crear
+router.get('/api/manual-transfers/me', authMiddleware, transferenciaController.getMyManualTransfers); // User: Mis transferencias manuales (NUEVA)
 
 // Ruta Webhook (Pública)
 router.post('/webhook', webhookController.handleWebhook);

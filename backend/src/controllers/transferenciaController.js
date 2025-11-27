@@ -77,6 +77,18 @@ const getManualTransfers = async (req, res) => {
   }
 };
 
+const getMyManualTransfers = async (req, res) => {
+  try {
+    // Usuario normal consulta SUS manuales
+    const userId = req.user.id;
+    const result = await transferenciaService.getManualTransfersByUserId(userId);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("❌ Error en getMyManualTransfers:", error.message);
+    res.status(500).json({ error: "Error al obtener tus transferencias." });
+  }
+};
+
 const createManualTransfer = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
@@ -106,5 +118,6 @@ module.exports = {
   confirmBatch,
   getUsersList,
   getManualTransfers,
+  getMyManualTransfers,
   createManualTransfer
 };
