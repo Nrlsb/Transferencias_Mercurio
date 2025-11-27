@@ -62,9 +62,8 @@ function Dashboard({ session, onLogout }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Filtros Búsqueda Comunes
+  // Filtros Búsqueda Comunes (DNI Eliminado)
   const [montoFilter, setMontoFilter] = useState('');
-  const [dniFilter, setDniFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState('');
 
   // Filtros Admin
@@ -238,9 +237,10 @@ function Dashboard({ session, onLogout }) {
     
     // Validación para usuario normal en Búsqueda
     if (!isAdmin && tabValue === 0) {
-        const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
+        // Validación actualizada: DNI removido, ahora validamos Monto y Fecha
+        const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
-            setError("Por favor, ingrese al menos 2 criterios de búsqueda para seguridad.");
+            setError("Por favor, ingrese Monto y Fecha para realizar la búsqueda.");
             return;
         }
         setFiltersApplied(true);
@@ -255,7 +255,7 @@ function Dashboard({ session, onLogout }) {
     const params = new URLSearchParams();
     
     if (montoFilter) params.append('monto', montoFilter);
-    if (dniFilter) params.append('dni', dniFilter);
+    // DNI Filter eliminado
 
     if (isAdmin) {
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
@@ -370,7 +370,7 @@ function Dashboard({ session, onLogout }) {
       }
   };
 
-  // Función completa para exportar PDF con soporte Mixto
+  // Función completa para exportar PDF
   const handleExportPDF = () => {
     if (!transferencias || transferencias.length === 0) {
         handleFeedback('No hay datos para exportar', 'warning');
@@ -395,7 +395,7 @@ function Dashboard({ session, onLogout }) {
     let tableColumn = [];
     let tableRows = [];
 
-    // Lógica para definir columnas según lo que estamos viendo
+    // Lógica para definir columnas
     if (isAdmin && tabValue === 2) {
         // CASO: Admin Tablas Manuales
         tableColumn = ["ID Transaccion", "Banco", "Fecha Carga", "Cliente Asignado", "Monto"];
@@ -411,8 +411,8 @@ function Dashboard({ session, onLogout }) {
              ];
         });
     } else {
-        // CASO: Mercado Pago (Admin/User) O Mixto (User Historial)
-        tableColumn = ["ID / Ref", "Fecha", "Monto", "Estado", "Origen", "Detalle Extra"];
+        // CASO: Mercado Pago (Admin/User) O Mixto (User Historial) - SIN COLUMNA PAGADOR
+        tableColumn = ["ID / Ref", "Fecha", "Monto", "Estado", "Origen"];
         
         tableRows = transferencias.map(t => {
             const isManual = !!t.banco;
@@ -434,16 +434,12 @@ function Dashboard({ session, onLogout }) {
             
             const origen = isManual ? `Manual (${t.banco})` : 'Mercado Pago';
             
-            // Detalle extra: Para MP es el pagador, para Manual nada relevante
-            const detalle = isManual ? '-' : (t.datos_completos?.payer?.email || 'Desconocido');
-
             return [
                 idRef,
                 fechaFormatted,
                 montoFormatted,
                 estado,
-                origen,
-                detalle
+                origen
             ];
         });
     }
@@ -519,7 +515,7 @@ function Dashboard({ session, onLogout }) {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
-                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Gestión Global' : 'Transferencias Confirmadas')) 
+                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Pendientes MP' : 'Confirmadas MP')) 
                     : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias')}
             </Typography>
 
@@ -536,15 +532,17 @@ function Dashboard({ session, onLogout }) {
                  </Button>
             )}
 
-            {/* DISPLAY TOTAL */}
-            <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
-                <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
-                    Total Vista: 
-                </Typography>
-                <Typography variant="h6" component="span" sx={{ ml: 1, color: '#0d47a1', fontWeight: 800 }}>
-                    ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                </Typography>
-            </Paper>
+            {/* DISPLAY TOTAL (SOLO PARA ADMIN) */}
+            {isAdmin && (
+                <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
+                    <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
+                        Total Vista: 
+                    </Typography>
+                    <Typography variant="h6" component="span" sx={{ ml: 1, color: '#0d47a1', fontWeight: 800 }}>
+                        ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    </Typography>
+                </Paper>
+            )}
         </Box>
 
         {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
@@ -593,18 +591,7 @@ function Dashboard({ session, onLogout }) {
                                     }}
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <TextField
-                                    fullWidth
-                                    placeholder="DNI"
-                                    label="DNI del Pagador"
-                                    type="text"
-                                    variant="outlined"
-                                    value={dniFilter}
-                                    onChange={(e) => setDniFilter(e.target.value)}
-                                    size="small"
-                                    />
-                                </Grid>
+                                {/* DNI FILTER ELIMINADO AQUI */}
                             </>
                         )}
 
@@ -683,7 +670,7 @@ function Dashboard({ session, onLogout }) {
                                 startIcon={<FilterListIcon />}
                                 sx={{ borderRadius: 20, height: '40px' }}
                                 >
-                                {isAdmin ? 'Buscar' : 'Filtrar'}
+                                {isAdmin ? 'Filtrar' : 'Buscar'}
                                 </Button>
                             </Grid>
                             
@@ -755,8 +742,9 @@ function Dashboard({ session, onLogout }) {
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID / Ref</TableCell>
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción / Banco</TableCell>
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-                                    {/* Pagador (Solo visible en MP puro) */}
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
+                                    
+                                    {/* COLUMNA PAGADOR ELIMINADA AQUI */}
+
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
                                     
                                     {isAdmin && (
@@ -773,7 +761,7 @@ function Dashboard({ session, onLogout }) {
                         {transferencias.length > 0 ? (
                             transferencias.map((t, idx) => {
                                 // DETECTAR SI ES MANUAL (tiene prop 'banco')
-                                // const isManual = !!t.banco;
+                                const isManual = !!t.banco;
 
                                 // RENDER ADMIN MANUAL TAB (VISTA DEDICADA)
                                 if (isAdmin && tabValue === 2) {

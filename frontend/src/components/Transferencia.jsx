@@ -229,9 +229,7 @@ const Transferencia = ({
 
       <TableCell>{formattedDate}</TableCell>
 
-      <TableCell>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>{displayName}</Typography>
-      </TableCell>
+      {/* COLUMNA PAGADOR ELIMINADA AQUI */}
 
       <TableCell>
         <Chip label={getStatusLabel(status)} color={isUsedByMe ? 'success' : (status === 'approved' ? 'success' : 'default')} size="small" variant="outlined" />
