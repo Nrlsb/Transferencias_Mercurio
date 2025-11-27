@@ -19,6 +19,7 @@ class TransferenciaService {
             throw new Error('El DNI debe tener al menos 8 números para realizar la búsqueda.');
         }
 
+        // CORRECCIÓN: Eliminado el typo "SH" y agregados fechaDesde/fechaHasta al conteo de filtros activos.
         const activeFilters = [monto, dni, fecha, fechaDesde, fechaHasta].filter(val => val !== undefined && val !== null && val !== '');
         
         // Mantenemos la regla: Mínimo 2 filtros para evitar scraping
@@ -48,10 +49,16 @@ class TransferenciaService {
             query = query.not('claimed_by', 'is', null);
         }
 
-        // NUEVO FILTRO: Confirmadas (Para la pestaña de confirmados)
+        // LÓGICA DE ESTADOS (CONFIRMADOS vs PENDIENTES) para las Pestañas de Admin
         if (confirmed === 'true') {
+            // Tab 1: Solo las confirmadas
             query = query.eq('confirmed', true);
+        } else if (confirmed === 'false') {
+            // Tab 0: Solo las NO confirmadas (Pendientes)
+            // Manejamos false o null por seguridad (para registros viejos)
+            query = query.or('confirmed.eq.false,confirmed.is.null');
         }
+        // Si no se pasa el parámetro 'confirmed', el admin ve todo mezclado (comportamiento default)
 
     } else if (isHistoryMode) {
         // Historial: Solo lo que reclamó el usuario
@@ -71,20 +78,22 @@ class TransferenciaService {
         query = query.filter('datos_completos->payer->identification->>number', 'ilike', `%${dni}%`);
     }
 
-    // 5. Lógica de Fechas
+    // 5. Lógica de Fechas (Mejorada para rangos de día completo)
     if (fechaDesde || fechaHasta) {
         if (fechaDesde) {
+            // Aseguramos inicio del día (00:00:00) local o UTC según input
             const fromDate = new Date(fechaDesde);
             fromDate.setHours(0, 0, 0, 0);
             query = query.gte('fecha_aprobado', fromDate.toISOString());
         }
         if (fechaHasta) {
+            // Aseguramos fin del día (23:59:59)
             const toDate = new Date(fechaHasta);
             toDate.setHours(23, 59, 59, 999);
             query = query.lte('fecha_aprobado', toDate.toISOString());
         }
     } else if (fecha) {
-        // Lógica Legacy
+        // Lógica Legacy / Usuario Normal: Ventana de 10 minutos
         const fechaTarget = new Date(fecha);
         if (!isNaN(fechaTarget.getTime())) {
             const diezMinutosEnMs = 10 * 60 * 1000;
@@ -137,19 +146,6 @@ class TransferenciaService {
     return data[0];
   }
 
-  // NUEVO METODO: Confirmar/Desconfirmar Transferencia
-  async toggleConfirmacion(idPago, confirmedValue) {
-    const { data, error } = await supabase
-      .from('transferencias')
-      .update({ confirmed: confirmedValue })
-      .eq('id_pago', idPago)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
   // NUEVO METODO PARA LIBERAR TRANSFERENCIA (ADMIN)
   async unclaimTransferencia(idPago) {
     const { data, error } = await supabase
@@ -162,6 +158,21 @@ class TransferenciaService {
     return data[0];
   }
 
+  // NUEVO: Confirmación Masiva (Batch)
+  async confirmBatch(ids) {
+    if (!ids || ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('transferencias')
+      .update({ confirmed: true })
+      .in('id_pago', ids)
+      .select();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // Lógica Mejorada: Soporta INSERT o UPDATE (Upsert manual)
   async createTransferenciaFromWebhook(paymentDetails) {
     // 1. Verificamos si existe
     const { data: existing } = await supabase
@@ -179,13 +190,14 @@ class TransferenciaService {
         descripcion: paymentDetails.description,
         email_pagador: paymentDetails.payer ? paymentDetails.payer.email : null,
         datos_completos: paymentDetails,
+        // IMPORTANTE: No sobreescribimos claimed_by ni confirmed en updates
     };
 
     if (existing) {
-        // 2. CASO UPDATE
+        // 2. CASO UPDATE: Si ya existe, actualizamos la info (ej: nombre del pagador que llega tarde)
         console.log(`🔄 Actualizando pago ${paymentDetails.id} con nuevos datos de webhook...`);
         
-        const {yb, error } = await supabase
+        const { error } = await supabase
             .from('transferencias')
             .update({
                 estado: datosTransferencia.estado,
@@ -196,10 +208,10 @@ class TransferenciaService {
             
         if (error) throw error;
     } else {
-        // 3. CASO INSERT
+        // 3. CASO INSERT: Nuevo pago
         console.log(`✨ Insertando nuevo pago ${paymentDetails.id}...`);
         
-        // Aseguramos valores por defecto
+        // Para insert inicial, aseguramos que claimed_by sea null y confirmed sea false
         const { error } = await supabase
             .from('transferencias')
             .insert([{ ...datosTransferencia, claimed_by: null, confirmed: false }]);

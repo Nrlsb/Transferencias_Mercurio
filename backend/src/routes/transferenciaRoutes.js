@@ -8,9 +8,9 @@ const webhookController = require('../controllers/webhookController');
 router.get('/api/transferencias', authMiddleware, transferenciaController.getTransferencias);
 router.post('/api/transferencias/:id/claim', authMiddleware, transferenciaController.claimTransferencia);
 
-// Rutas Admin
+// Rutas Admin (Unclaim y Confirm Batch)
 router.post('/api/transferencias/:id/unclaim', authMiddleware, transferenciaController.unclaimTransferencia);
-router.put('/api/transferencias/:id/confirm', authMiddleware, transferenciaController.toggleConfirmacion); // Nueva ruta
+router.post('/api/transferencias/confirm-batch', authMiddleware, transferenciaController.confirmBatch); // Nueva ruta para confirmación masiva
 
 // Ruta Webhook (Pública)
 router.post('/webhook', webhookController.handleWebhook);

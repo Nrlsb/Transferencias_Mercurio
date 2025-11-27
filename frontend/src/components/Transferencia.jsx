@@ -6,22 +6,32 @@ import {
   Chip,
   Box,
   Tooltip,
+  IconButton,
   Checkbox
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 
-const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isAdmin }) => {
+const Transferencia = ({ 
+    transferencia, 
+    session, 
+    onClaimSuccess, 
+    onFeedback, 
+    isAdmin,
+    // Nuevas props para manejo de selección desde el padre
+    isSelectable,
+    isSelected,
+    onToggleSelect
+}) => {
   const { id_pago, claimed_by, datos_completos, usuarios, email_pagador, confirmed } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  
-  // Estado local para feedback instantáneo del checkbox
-  const [isConfirmedLocal, setIsConfirmedLocal] = useState(confirmed || false);
 
+  // Verificamos si la transferencia ya es del usuario actual
   const isMine = !!claimed_by && claimed_by === session?.user?.id; 
 
+  // Parsing seguro de datos_completos
   const datosParsed = typeof datos_completos === 'string' 
     ? JSON.parse(datos_completos) 
     : (datos_completos || {});
@@ -30,27 +40,40 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     date_approved,
     status,
     transaction_amount,
-    payer,
     description,
+    payer,
     point_of_interaction
   } = datosParsed;
 
+  // --- LÓGICA DE EXTRACCIÓN DE NOMBRE ACTUALIZADA ---
   let displayName = 'Desconocido';
+  
+  // 1. PRIORIDAD MÁXIMA: Buscar en información bancaria
   if (point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
     displayName = point_of_interaction.transaction_data.bank_info.payer.long_name;
-  } else if (payer?.first_name || payer?.last_name) {
+  }
+  // 2. Intentar buscar Nombre y Apellido en objeto payer (Cuenta Mercado Pago)
+  else if (payer?.first_name || payer?.last_name) {
     displayName = `${payer.first_name || ''} ${payer.last_name || ''}`.trim();
-  } else if (payer?.email) {
+  }
+  // 3. Fallback a Email del objeto payer
+  else if (payer?.email) {
     displayName = payer.email;
-  } else if (email_pagador) {
+  }
+  // 4. Fallback a columna de base de datos
+  else if (email_pagador) {
     displayName = email_pagador;
   }
+  // --------------------------------------------------
 
+  // Lógica de Identificación (DNI/CUIL)
   const identificationNumber = payer?.identification?.number || null;
   const identificationType = payer?.identification?.type || 'ID';
+  
   const displayIdentification = identificationNumber 
     ? `${identificationType}: ${identificationNumber}`
     : 'ID No Disponible';
+
 
   const formattedDate = date_approved 
     ? new Date(date_approved).toLocaleDateString() + ' ' + new Date(date_approved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -96,8 +119,9 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         }
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Error al reclamar");
       }
 
@@ -131,36 +155,14 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
               'Content-Type': 'application/json'
             }
         });
+
         if (!response.ok) throw new Error("Error al liberar transferencia");
+
         if (onFeedback) onFeedback('Transferencia liberada exitosamente', 'success');
         if (onClaimSuccess) onClaimSuccess(); 
 
     } catch (error) {
         if (onFeedback) onFeedback(error.message, 'error');
-    }
-  };
-
-  // NUEVO: Manejador del checkbox de confirmación
-  const handleToggleConfirm = async (e) => {
-    const newValue = e.target.checked;
-    setIsConfirmedLocal(newValue); // Optimistic UI update
-
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${id_pago}/confirm`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ confirmed: newValue })
-        });
-
-        if (!response.ok) throw new Error("Error al actualizar confirmación");
-        
-        // No necesitamos feedback visual intrusivo para esto, el checkbox ya cambió
-    } catch (error) {
-        setIsConfirmedLocal(!newValue); // Revertir si falla
-        if (onFeedback) onFeedback("Error al confirmar transferencia", 'error');
     }
   };
 
@@ -172,6 +174,18 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         transition: 'background-color 0.3s'
       }}
     >
+      {/* NUEVA CELDA: Checkbox de selección (Solo si es seleccionable) */}
+      {isSelectable && (
+          <TableCell padding="checkbox">
+              <Checkbox 
+                checked={isSelected || false}
+                onChange={() => onToggleSelect(id_pago)}
+                color="primary"
+                inputProps={{ 'aria-label': `seleccionar transferencia ${id_pago}` }}
+              />
+          </TableCell>
+      )}
+
       <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
         <Tooltip title={claimed_by || isAdmin ? "Solo copiar ID" : "Click para Copiar ID y Reclamar"} arrow>
           <Box 
@@ -207,6 +221,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
       <TableCell>{formattedDate}</TableCell>
 
+      {/* CELDA DE PAGADOR */}
       <TableCell>
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
@@ -229,39 +244,27 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
       </TableCell>
 
       {isAdmin && (
-        <>
-            <TableCell>
-                {claimed_by ? (
-                    <Chip 
-                        icon={<AssignmentIndIcon />}
-                        label={usuarios?.email || 'Usuario ID: ' + claimed_by.slice(0, 8) + '...'} 
-                        size="small" 
-                        variant="outlined"
-                        color="primary"
-                        onDelete={handleUnclaim}
-                        deleteIcon={
-                            <Tooltip title="Liberar Transferencia">
-                                <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'error.main', borderRadius: '50%', width: 16, height: 16, color: 'white', fontSize: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'error.dark' } }}>
-                                    X
-                                </Box>
-                            </Tooltip>
-                        }
-                    />
-                ) : (
-                    <Chip icon={<PersonOffIcon />} label="Libre" size="small" variant="outlined" color="default" sx={{ borderStyle: 'dashed' }} />
-                )}
-            </TableCell>
-            
-            {/* NUEVA CELDA CHECKBOX CONFIRMACIÓN */}
-            <TableCell align="center">
-                <Checkbox
-                    checked={isConfirmedLocal}
-                    onChange={handleToggleConfirm}
-                    color="success"
-                    inputProps={{ 'aria-label': 'Confirmar transferencia' }}
+        <TableCell>
+            {claimed_by ? (
+                <Chip 
+                    icon={<AssignmentIndIcon />}
+                    label={usuarios?.email || 'Usuario ID: ' + claimed_by.slice(0, 8) + '...'} 
+                    size="small" 
+                    variant="outlined"
+                    color="primary"
+                    onDelete={handleUnclaim}
+                    deleteIcon={
+                        <Tooltip title="Liberar Transferencia">
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'error.main', borderRadius: '50%', width: 16, height: 16, color: 'white', fontSize: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'error.dark' } }}>
+                                X
+                            </Box>
+                        </Tooltip>
+                    }
                 />
-            </TableCell>
-        </>
+            ) : (
+                <Chip icon={<PersonOffIcon />} label="Libre" size="small" variant="outlined" color="default" sx={{ borderStyle: 'dashed' }} />
+            )}
+        </TableCell>
       )}
 
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
