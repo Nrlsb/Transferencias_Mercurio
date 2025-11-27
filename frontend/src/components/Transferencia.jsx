@@ -95,6 +95,14 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     }
   };
 
+  // Función para copiar solo el monto (valor)
+  const handleCopyAmount = () => {
+    if (transaction_amount) {
+        navigator.clipboard.writeText(transaction_amount.toString());
+        if (onFeedback) onFeedback(`Monto copiado: $${transaction_amount}`, 'info');
+    }
+  };
+
   // NUEVA FUNCION PARA ANULAR RECLAMO (ADMIN)
   const handleUnclaim = async () => {
     if(!isAdmin) return;
@@ -134,7 +142,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         scope="row" 
         sx={{ fontWeight: 'medium' }}
       >
-        <Tooltip title={claimed_by || isAdmin ? "Solo copiar" : "Click para Copiar y Reclamar"} arrow>
+        <Tooltip title={claimed_by || isAdmin ? "Solo copiar ID" : "Click para Copiar ID y Reclamar"} arrow>
           <Box 
             onClick={handleCopyAndClaim}
             onMouseEnter={() => setIsHovered(true)}
@@ -236,7 +244,24 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
       )}
 
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-        ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+        <Tooltip title="Click para copiar monto" arrow placement="top">
+            <Box
+                component="span"
+                onClick={handleCopyAmount}
+                sx={{ 
+                    cursor: 'pointer', 
+                    display: 'inline-block',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    '&:hover': { 
+                        bgcolor: 'action.hover',
+                        color: 'primary.main' 
+                    }
+                }}
+            >
+                ${transaction_amount?.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            </Box>
+        </Tooltip>
       </TableCell>
     </TableRow>
   );
