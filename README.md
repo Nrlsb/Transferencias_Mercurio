@@ -26,6 +26,15 @@ Esta aplicación es un sistema full-stack que permite a los usuarios registrarse
 
 ---
 
+## Estructura del Proyecto
+
+El repositorio está organizado en dos carpetas principales:
+
+-   `./frontend`: Contiene la aplicación cliente desarrollada con React. Incluye componentes, estilos y la lógica para interactuar con el backend.
+-   `./backend`: Contiene el servidor Node.js/Express, responsable de la lógica de negocio, la autenticación y la comunicación con la base de datos y la API de Mercado Pago.
+
+---
+
 ## Configuración del Proyecto
 
 ### Prerrequisitos
