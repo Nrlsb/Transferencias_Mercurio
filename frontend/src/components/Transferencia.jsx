@@ -13,12 +13,17 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 
 const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isAdmin }) => {
-  const { id_pago, claimed_by, datos_completos, usuarios } = transferencia;
+  const { id_pago, claimed_by, datos_completos, usuarios, email_pagador } = transferencia;
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   // Verificamos si la transferencia ya es del usuario actual
   const isMine = !!claimed_by && claimed_by === session?.user?.id; 
+
+  // Parsing seguro de datos_completos
+  const datosParsed = typeof datos_completos === 'string' 
+    ? JSON.parse(datos_completos) 
+    : (datos_completos || {});
 
   const {
     date_approved,
@@ -26,7 +31,37 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     transaction_amount,
     description,
     payer,
-  } = datos_completos || {};
+    point_of_interaction
+  } = datosParsed;
+
+  // Lógica Avanzada de Extracción de Nombre del Pagador
+  let displayName = 'Desconocido';
+  
+  // 1. Intentar buscar Nombre y Apellido en objeto payer
+  if (payer?.first_name || payer?.last_name) {
+    displayName = `${payer.first_name || ''} ${payer.last_name || ''}`.trim();
+  }
+  // 2. Intentar buscar en información bancaria (común en transferencias)
+  else if (point_of_interaction?.transaction_data?.bank_info?.payer?.long_name) {
+    displayName = point_of_interaction.transaction_data.bank_info.payer.long_name;
+  }
+  // 3. Fallback a Email del objeto payer
+  else if (payer?.email) {
+    displayName = payer.email;
+  }
+  // 4. Fallback a columna de base de datos
+  else if (email_pagador) {
+    displayName = email_pagador;
+  }
+
+  // Lógica de Identificación (DNI/CUIL)
+  const identificationNumber = payer?.identification?.number || null;
+  const identificationType = payer?.identification?.type || 'ID';
+  
+  const displayIdentification = identificationNumber 
+    ? `${identificationType}: ${identificationNumber}`
+    : 'ID No Disponible';
+
 
   const formattedDate = date_approved 
     ? new Date(date_approved).toLocaleDateString() + ' ' + new Date(date_approved).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -46,13 +81,12 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
           case 'approved': return 'Aprobado';
           case 'pending': return 'Pendiente';
           case 'rejected': return 'Rechazado';
+          case 'accredited': return 'Acreditado';
           default: return status;
       }
   };
 
   const handleCopyAndClaim = async () => {
-    // Si ya está reclamada (por mí o por otro), solo copiamos.
-    // Si soy admin, también solo copio, no reclamo automáticamente a mi nombre a menos que quiera (lógica estándar: admin observa).
     if (claimed_by || isAdmin) {
        navigator.clipboard.writeText(id_pago.toString());
        if (onFeedback) onFeedback('ID copiado al portapapeles', 'info');
@@ -61,14 +95,10 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
     try {
       setLoadingClaim(true);
-      
-      // 1. Copiar al portapapeles
       await navigator.clipboard.writeText(id_pago.toString());
 
-      // 2. Usar el token que recibimos por props
       if (!session?.access_token) throw new Error("No hay sesión activa");
 
-      // 3. Llamar al backend para reclamar
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${id_pago}/claim`, {
         method: 'POST',
         headers: {
@@ -84,8 +114,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
       }
 
       if (onFeedback) onFeedback('¡Transferencia reclamada y copiada!', 'success');
-      
-      // 4. Notificar al padre para actualizar la UI
       if (onClaimSuccess) onClaimSuccess();
 
     } catch (error) {
@@ -95,23 +123,17 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
     }
   };
 
-  // Función para copiar solo el monto (valor)
+  // Función para copiar solo el monto (valor) con coma
   const handleCopyAmount = () => {
     if (transaction_amount) {
-        // Reemplazamos el punto por coma para facilitar el pegado en apps locales
         const montoConComa = transaction_amount.toString().replace('.', ',');
         navigator.clipboard.writeText(montoConComa);
-        
-        // Feedback visual
         if (onFeedback) onFeedback(`Monto copiado: $${montoConComa}`, 'info');
     }
   };
 
-  // NUEVA FUNCION PARA ANULAR RECLAMO (ADMIN)
   const handleUnclaim = async () => {
     if(!isAdmin) return;
-
-    // Confirmación simple
     if(!window.confirm("¿Estás seguro de que deseas liberar esta transferencia?")) return;
 
     try {
@@ -126,7 +148,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         if (!response.ok) throw new Error("Error al liberar transferencia");
 
         if (onFeedback) onFeedback('Transferencia liberada exitosamente', 'success');
-        if (onClaimSuccess) onClaimSuccess(); // Actualizamos la lista
+        if (onClaimSuccess) onClaimSuccess(); 
 
     } catch (error) {
         if (onFeedback) onFeedback(error.message, 'error');
@@ -141,11 +163,7 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         transition: 'background-color 0.3s'
       }}
     >
-      <TableCell 
-        component="th" 
-        scope="row" 
-        sx={{ fontWeight: 'medium' }}
-      >
+      <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
         <Tooltip title={claimed_by || isAdmin ? "Solo copiar ID" : "Click para Copiar ID y Reclamar"} arrow>
           <Box 
             onClick={handleCopyAndClaim}
@@ -180,11 +198,14 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
 
       <TableCell>{formattedDate}</TableCell>
 
+      {/* CELDA DE DATOS DEL PAGADOR MEJORADA */}
       <TableCell>
         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="body2">{payer?.email || 'N/A'}</Typography>
-            <Typography variant="caption" color="text.secondary">
-                DNI: {payer?.identification?.number || '-'}
+            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {displayName}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.70rem' }}>
+                {displayIdentification}
             </Typography>
         </Box>
       </TableCell>
@@ -199,7 +220,6 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
         />
       </TableCell>
 
-      {/* COLUMNA EXTRA PARA ADMIN */}
       {isAdmin && (
         <TableCell>
             {claimed_by ? (
@@ -209,40 +229,17 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
                     size="small" 
                     variant="outlined"
                     color="primary"
-                    // AQUÍ ESTÁ EL CAMBIO: onDelete permite eliminar/liberar
                     onDelete={handleUnclaim}
                     deleteIcon={
                         <Tooltip title="Liberar Transferencia">
-                            <Box 
-                                component="span" 
-                                sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
-                                    bgcolor: 'error.main', 
-                                    borderRadius: '50%', 
-                                    width: 16, 
-                                    height: 16, 
-                                    color: 'white',
-                                    fontSize: '10px',
-                                    cursor: 'pointer',
-                                    '&:hover': { bgcolor: 'error.dark' }
-                                }}
-                            >
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'error.main', borderRadius: '50%', width: 16, height: 16, color: 'white', fontSize: '10px', cursor: 'pointer', '&:hover': { bgcolor: 'error.dark' } }}>
                                 X
                             </Box>
                         </Tooltip>
                     }
                 />
             ) : (
-                <Chip 
-                    icon={<PersonOffIcon />}
-                    label="Libre" 
-                    size="small" 
-                    variant="outlined"
-                    color="default"
-                    sx={{ borderStyle: 'dashed' }}
-                />
+                <Chip icon={<PersonOffIcon />} label="Libre" size="small" variant="outlined" color="default" sx={{ borderStyle: 'dashed' }} />
             )}
         </TableCell>
       )}
