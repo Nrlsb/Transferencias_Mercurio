@@ -7,14 +7,8 @@ const webhookController = require('../controllers/webhookController');
 // Rutas API (Protegidas)
 router.get('/api/transferencias', authMiddleware, transferenciaController.getTransferencias);
 router.post('/api/transferencias/:id/claim', authMiddleware, transferenciaController.claimTransferencia);
-
-// Ruta para admin (Unclaim)
+// Nueva ruta para admin (Unclaim)
 router.post('/api/transferencias/:id/unclaim', authMiddleware, transferenciaController.unclaimTransferencia);
-
-// --- NUEVA RUTA: Obtener titular real desde MP (Live Fetch) ---
-// La protegemos con authMiddleware para que no sea pública
-router.get('/api/transferencias/:id/titular-real', authMiddleware, transferenciaController.getTitularRealMP);
-
 
 // Ruta Webhook (Pública)
 router.post('/webhook', webhookController.handleWebhook);
