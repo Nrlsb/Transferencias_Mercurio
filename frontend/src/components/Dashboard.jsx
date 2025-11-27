@@ -26,7 +26,15 @@ import {
   Tab,
   Chip,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -34,57 +42,66 @@ import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import ListAltIcon from '@mui/icons-material/ListAlt'; // Icono para "Gestión Global"
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'; // Icono para "Confirmadas"
-import DoneAllIcon from '@mui/icons-material/DoneAll'; // Icono para botón confirmar
+import ListAltIcon from '@mui/icons-material/ListAlt'; 
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DoneAllIcon from '@mui/icons-material/DoneAll'; 
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; 
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Estado para controlar las pestañas
-  // Admin: 0 -> Gestión Global (Pendientes), 1 -> Confirmadas
-  // User: 0 -> Buscar, 1 -> Historial
+  // Tab 0: Pendientes MP, Tab 1: Confirmadas MP, Tab 2: Otros Bancos (Manual)
   const [tabValue, setTabValue] = useState(0);
 
-  // Estados para Selección Múltiple (Solo Admin)
+  // Selección Múltiple (Solo para Tab 0)
   const [selectedIds, setSelectedIds] = useState([]);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Filtros Búsqueda Comunes
+  // Filtros Búsqueda (MP)
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
-  const [fechaFilter, setFechaFilter] = useState(''); // Fecha puntual (Usuarios)
-
-  // Filtros Admin
-  const [adminUserFilter, setAdminUserFilter] = useState(''); // Email quien reclamo
-  const [dateFromFilter, setDateFromFilter] = useState('');   // Fecha Desde
-  const [dateToFilter, setDateToFilter] = useState('');       // Fecha Hasta
-  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false); // Filtro solo reclamados
-
+  const [fechaFilter, setFechaFilter] = useState('');
+  const [adminUserFilter, setAdminUserFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false);
   const [filtersApplied, setFiltersApplied] = useState(false);
 
-  // Feedback UI
-  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
+  // Manual Data (Tab 2)
+  const [usersList, setUsersList] = useState([]);
+  const [openManualModal, setOpenManualModal] = useState(false);
+  const [manualData, setManualData] = useState({
+      id_transaccion: '',
+      banco: '',
+      monto: '',
+      userId: ''
+  });
+  const [loadingManual, setLoadingManual] = useState(false);
 
-  // Verificamos si es admin
+  const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
   const isAdmin = session?.user?.is_admin === true;
 
-  // Cálculo del Total en tiempo real (Suma de montos visibles)
+  // Cálculo de total dinámico
   const totalAmount = transferencias.reduce((acc, curr) => {
-    return acc + (curr.datos_completos?.transaction_amount || 0);
+      // Si estamos en Tab 2, el objeto tiene propiedad 'monto' directa.
+      // Si es MP, está en 'datos_completos.transaction_amount' o 'monto' en DB.
+      const val = tabValue === 2 ? curr.monto : (curr.datos_completos?.transaction_amount || 0);
+      return acc + parseFloat(val);
   }, 0);
 
   useEffect(() => {
-    // Si es admin, cargamos automáticamente según la pestaña
     if (isAdmin) {
         if (tabValue === 0) {
-            // Tab 0 (Gestión Global): Trae las pendientes (confirmed=false)
             fetchTransferencias('?confirmed=false');
         } else if (tabValue === 1) {
-            // Tab 1 (Confirmadas): Trae el historial de confirmadas (confirmed=true)
             fetchTransferencias('?confirmed=true');
+        } else if (tabValue === 2) {
+            // Cargar manuales
+            fetchManualTransfers();
+            fetchUsersList();
         }
     } else {
         if (tabValue === 1) {
@@ -99,41 +116,59 @@ function Dashboard({ session, onLogout }) {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setError(null);
-    setTransferencias([]); // Limpiamos tabla visualmente al cambiar
-    setSelectedIds([]); // Limpiamos selecciones al cambiar de contexto
+    setTransferencias([]); 
+    setSelectedIds([]); 
   };
 
+  // --- API CALLS ---
+
+  const fetchUsersList = async () => {
+      if (usersList.length > 0) return;
+      try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/users`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
+          if (response.ok) {
+              const data = await response.json();
+              setUsersList(data);
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
+  // Obtener transferencias de Mercado Pago (Tab 0 y 1)
   const fetchTransferencias = async (queryParams = '') => {
     setLoading(true);
     setError(null);
-
-    if (!session?.access_token) {
-        setError("No hay una sesión de usuario válida.");
-        setLoading(false);
-        return;
-    }
-
     try {
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias${queryParams}`;
-      
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Error del servidor' }));
-        throw new Error(errorData.error || 'Error al obtener datos');
-      }
-      
+      if (!response.ok) throw new Error('Error al obtener datos');
       const data = await response.json();
       setTransferencias(data);
     } catch (e) {
       setError(e.message);
-      if (e.message.includes('No autorizado') || e.message.includes('Token')) {
-          if (onLogout) onLogout();
-      }
+      if (e.message.includes('No autorizado') && onLogout) onLogout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Obtener transferencias manuales (Tab 2) - Endpoint Nuevo
+  const fetchManualTransfers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/manual-transfers`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) throw new Error('Error al obtener transferencias manuales');
+      const data = await response.json();
+      setTransferencias(data);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -141,8 +176,7 @@ function Dashboard({ session, onLogout }) {
 
   const handleSearchSubmit = (e) => {
     if(e) e.preventDefault();
-    
-    // Si NO es admin, validamos filtros mínimos
+    // Validacion usuario normal
     if (!isAdmin && tabValue === 0) {
         const activeFilters = [montoFilter, dniFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
@@ -151,89 +185,95 @@ function Dashboard({ session, onLogout }) {
         }
         setFiltersApplied(true);
     }
+    // Si estamos en manuales (Tab 2), por ahora solo recargamos
+    if(isAdmin && tabValue === 2) {
+        fetchManualTransfers();
+        return;
+    }
 
     const params = new URLSearchParams();
-    
     if (montoFilter) params.append('monto', montoFilter);
     if (dniFilter) params.append('dni', dniFilter);
 
     if (isAdmin) {
-        // Filtros Admin
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
         if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
         if (dateToFilter) params.append('fechaHasta', dateToFilter);
         if (onlyClaimedFilter) params.append('soloReclamados', 'true');
         
-        // Mantener lógica de estados según la tab actual
-        if (tabValue === 1) {
-            params.append('confirmed', 'true');
-        } else {
-            params.append('confirmed', 'false');
-        }
-
+        if (tabValue === 1) params.append('confirmed', 'true');
+        else params.append('confirmed', 'false');
     } else {
-        // Filtro Usuario
         if (fechaFilter) {
             params.set('fechaDesde', fechaFilter);
             params.set('fechaHasta', fechaFilter);
         }
     }
-    
     if (tabValue === 1 && !isAdmin) params.append('history', 'true');
 
     fetchTransferencias(`?${params.toString()}`);
   };
 
-  const handleTransferenciaClaimed = () => {
-    // Recargar búsqueda actual
-    handleSearchSubmit(null);
+  // --- MANUAL CREATE ---
+
+  const handleManualChange = (e) => {
+      setManualData({ ...manualData, [e.target.name]: e.target.value });
   };
 
-  // --- LÓGICA DE SELECCIÓN Y CONFIRMACIÓN MASIVA ---
-
-  const handleToggleSelect = (id) => {
-    setSelectedIds(prev => 
-        prev.includes(id) 
-        ? prev.filter(item => item !== id) 
-        : [...prev, id]
-    );
-  };
-
-  const handleSelectAll = (e) => {
-      if (e.target.checked) {
-          // Seleccionar todas las visibles
-          setSelectedIds(transferencias.map(t => t.id_pago));
-      } else {
-          setSelectedIds([]);
-      }
-  };
-
-  const handleBatchConfirm = async () => {
-      if (selectedIds.length === 0) return;
-      
-      if (!window.confirm(`¿Estás seguro de confirmar ${selectedIds.length} transferencias? Desaparecerán de la lista de pendientes.`)) return;
-
-      setIsConfirming(true);
+  const handleSubmitManual = async () => {
+      setLoadingManual(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/confirm-batch`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/manual-transfers`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session.access_token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ids: selectedIds })
+            body: JSON.stringify(manualData)
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Error en confirmación masiva");
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Error al crear");
 
+        handleFeedback('Transferencia manual creada exitosamente', 'success');
+        setOpenManualModal(false);
+        setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' });
+        fetchManualTransfers();
+
+      } catch (error) {
+        handleFeedback(error.message, 'error');
+      } finally {
+        setLoadingManual(false);
+      }
+  };
+
+  // --- ACTIONS ---
+
+  const handleTransferenciaClaimed = () => handleSearchSubmit(null);
+  
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+  
+  const handleSelectAll = (e) => {
+      if (e.target.checked) setSelectedIds(transferencias.map(t => t.id_pago));
+      else setSelectedIds([]);
+  };
+
+  const handleBatchConfirm = async () => {
+      if (selectedIds.length === 0) return;
+      if (!window.confirm(`¿Estás seguro de confirmar ${selectedIds.length} transferencias? Desaparecerán de la lista de pendientes.`)) return;
+      setIsConfirming(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/confirm-batch`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        if (!response.ok) throw new Error("Error en confirmación masiva");
         handleFeedback(`${selectedIds.length} transferencias confirmadas correctamente`, 'success');
         setSelectedIds([]);
-        // Recargar la lista (las confirmadas desaparecerán de la tab 0)
         handleSearchSubmit(null);
-
       } catch (error) {
         handleFeedback(error.message, 'error');
       } finally {
@@ -241,9 +281,7 @@ function Dashboard({ session, onLogout }) {
       }
   };
 
-  // --------------------------------------------------
-
-  // Función para generar y descargar el PDF
+  // Función ORIGINAL restaurada para generar y descargar el PDF
   const handleExportPDF = () => {
     if (!transferencias || transferencias.length === 0) {
         handleFeedback('No hay datos para exportar', 'warning');
@@ -273,7 +311,9 @@ function Dashboard({ session, onLogout }) {
         if (dateFromFilter) filtrosTexto += `Desde ${dateFromFilter} `;
         if (dateToFilter) filtrosTexto += `Hasta ${dateToFilter} `;
         if (adminUserFilter) filtrosTexto += `Usuario: ${adminUserFilter} `;
-        if (tabValue === 1) filtrosTexto += '(CONFIRMADAS) ';
+        
+        if (tabValue === 2) filtrosTexto += '(OTROS BANCOS) ';
+        else if (tabValue === 1) filtrosTexto += '(CONFIRMADAS) ';
         else filtrosTexto += '(PENDIENTES) ';
         
         doc.setFontSize(9);
@@ -282,35 +322,54 @@ function Dashboard({ session, onLogout }) {
     }
 
     // Definición de Columnas
-    const tableColumn = ["ID Pago", "Fecha", "Monto", "Estado", "Pagador", "Reclamado Por", "Conf."];
-    
-    // Mapeo de Datos
-    const tableRows = transferencias.map(t => {
-        const fechaFormatted = t.datos_completos?.date_approved 
-            ? new Date(t.datos_completos.date_approved).toLocaleDateString() + ' ' + new Date(t.datos_completos.date_approved).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-            : 'N/A';
+    // Ajustamos las columnas dependiendo si es Manual o MP
+    let tableColumn = [];
+    let tableRows = [];
 
-        const montoFormatted = `$${(t.datos_completos?.transaction_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-        
-        let estado = t.estado;
-        if (estado === 'approved') estado = 'Aprobado';
-        else if (estado === 'pending') estado = 'Pendiente';
-        else if (estado === 'rejected') estado = 'Rechazado';
+    if (tabValue === 2) {
+        // Columnas para Manuales
+        tableColumn = ["ID Transaccion", "Banco", "Fecha Carga", "Cliente", "Monto"];
+        tableRows = transferencias.map(t => {
+             const fechaFormatted = new Date(t.fecha_carga).toLocaleDateString() + ' ' + new Date(t.fecha_carga).toLocaleTimeString();
+             const montoFormatted = `$${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+             return [
+                 t.id_transaccion,
+                 t.banco,
+                 fechaFormatted,
+                 t.usuarios?.email || 'N/A',
+                 montoFormatted
+             ];
+        });
+    } else {
+        // Columnas para MP
+        tableColumn = ["ID Pago", "Fecha", "Monto", "Estado", "Pagador", "Reclamado Por", "Conf."];
+        tableRows = transferencias.map(t => {
+            const fechaFormatted = t.datos_completos?.date_approved 
+                ? new Date(t.datos_completos.date_approved).toLocaleDateString() + ' ' + new Date(t.datos_completos.date_approved).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                : 'N/A';
 
-        const pagador = t.datos_completos?.payer?.email || 'Desconocido';
-        const reclamadoPor = t.usuarios?.email || (t.claimed_by ? 'ID: ' + t.claimed_by : 'No reclamado');
-        const confirmadaTxt = t.confirmed ? 'SI' : 'NO';
+            const montoFormatted = `$${(t.datos_completos?.transaction_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+            
+            let estado = t.estado;
+            if (estado === 'approved') estado = 'Aprobado';
+            else if (estado === 'pending') estado = 'Pendiente';
+            else if (estado === 'rejected') estado = 'Rechazado';
 
-        return [
-            t.id_pago,
-            fechaFormatted,
-            montoFormatted,
-            estado,
-            pagador,
-            reclamadoPor,
-            confirmadaTxt
-        ];
-    });
+            const pagador = t.datos_completos?.payer?.email || 'Desconocido';
+            const reclamadoPor = t.usuarios?.email || (t.claimed_by ? 'ID: ' + t.claimed_by : 'No reclamado');
+            const confirmadaTxt = t.confirmed ? 'SI' : 'NO';
+
+            return [
+                t.id_pago,
+                fechaFormatted,
+                montoFormatted,
+                estado,
+                pagador,
+                reclamadoPor,
+                confirmadaTxt
+            ];
+        });
+    }
 
     // Generación de la tabla con autoTable
     autoTable(doc, {
@@ -327,10 +386,7 @@ function Dashboard({ session, onLogout }) {
     handleFeedback('PDF generado exitosamente', 'success');
   };
 
-  const handleFeedback = (message, severity = 'success') => {
-    setFeedback({ open: true, message, severity });
-  };
-
+  const handleFeedback = (message, severity = 'success') => setFeedback({ open: true, message, severity });
   const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
   return (
@@ -346,14 +402,7 @@ function Dashboard({ session, onLogout }) {
                 <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 {session.user.email}
                 </Typography>
-                <Button 
-                color="primary" 
-                variant="outlined"
-                onClick={onLogout} 
-                startIcon={<LogoutIcon />}
-                size="small"
-                sx={{ borderRadius: 20 }}
-                >
+                <Button color="primary" variant="outlined" onClick={onLogout} startIcon={<LogoutIcon />} size="small" sx={{ borderRadius: 20 }}>
                 Salir
                 </Button>
             </Box>
@@ -363,17 +412,15 @@ function Dashboard({ session, onLogout }) {
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        {/* PESTAÑAS (TABS) DINÁMICAS */}
         <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
+            <Tabs value={tabValue} onChange={handleTabChange}>
                 {isAdmin ? (
-                    // Tabs para Admin
                     [
-                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global (Pendientes)" />,
-                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial Confirmadas" />
+                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global (MP)" />,
+                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial MP" />,
+                        <Tab key="admin-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
                     ]
                 ) : (
-                    // Tabs para Usuario
                     [
                         <Tab key="user-search" icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />,
                         <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
@@ -382,15 +429,25 @@ function Dashboard({ session, onLogout }) {
             </Tabs>
         </Paper>
 
-        {/* BARRA SUPERIOR CON TOTAL Y BOTÓN DE ACCIÓN */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
-                    ? (tabValue === 0 ? 'Gestión Global' : 'Transferencias Confirmadas') 
+                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Gestión Global' : 'Transferencias Confirmadas')) 
                     : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
             </Typography>
 
-            {/* TOTAL AMOUNT DISPLAY */}
+            {isAdmin && tabValue === 2 && (
+                 <Button 
+                    variant="contained" 
+                    color="secondary" 
+                    startIcon={<AddCircleOutlineIcon />}
+                    onClick={() => setOpenManualModal(true)}
+                    sx={{ borderRadius: 20 }}
+                 >
+                     Cargar Transferencia
+                 </Button>
+            )}
+
             <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
                 <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
                     Total en Pantalla: 
@@ -401,16 +458,16 @@ function Dashboard({ session, onLogout }) {
             </Paper>
         </Box>
 
-        {/* BOTÓN DE CONFIRMAR MASIVO (SOLO APARECE SI ADMIN + TAB 0 + ITEMS SELECCIONADOS) */}
+        {/* BATCH ACTION (Solo Tab 0) */}
         {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
             <Alert severity="info" sx={{ mb: 2, alignItems: 'center' }}
                 action={
                     <Button 
                         color="success" 
                         variant="contained" 
-                        size="small"
-                        onClick={handleBatchConfirm}
-                        disabled={isConfirming}
+                        size="small" 
+                        onClick={handleBatchConfirm} 
+                        disabled={isConfirming} 
                         startIcon={<DoneAllIcon />}
                     >
                         {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
@@ -421,12 +478,13 @@ function Dashboard({ session, onLogout }) {
             </Alert>
         )}
 
-        {(isAdmin || tabValue === 0) && (
+        {/* FILTROS: Restauramos TODO el bloque de filtros original */}
+        {tabValue !== 2 && (isAdmin || tabValue === 0) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                     {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
                 </Typography>
-                <Box component="form" onSubmit={handleSearchSubmit}>
+                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
                         
                         {!isAdmin && (
@@ -557,88 +615,99 @@ function Dashboard({ session, onLogout }) {
                             )}
                         </Grid>
                     </Grid>
-                </Box>
+                 </Box>
             </Paper>
         )}
 
         <Box>
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-              <CircularProgress />
-            </Box>
-          )}
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+          {loading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           {!loading && !error && (
-            (isAdmin || (tabValue === 0 && filtersApplied) || (tabValue === 1)) ? (
-                <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                    <TableContainer sx={{ maxHeight: 600 }}>
-                    <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
-                        <TableHead>
-                        <TableRow>
-                            {/* COLUMNA DE SELECCIÓN (Checkbox Header) - SOLO ADMIN TAB 0 */}
-                            {isAdmin && tabValue === 0 && (
-                                <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>
-                                    <Checkbox 
-                                        indeterminate={selectedIds.length > 0 && selectedIds.length < transferencias.length}
-                                        checked={transferencias.length > 0 && selectedIds.length === transferencias.length}
-                                        onChange={handleSelectAll}
-                                        color="primary"
-                                    />
-                                </TableCell>
-                            )}
-
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID Transacción</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
-                            {isAdmin && (
-                                <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
-                                    Reclamado Por
-                                </TableCell>
-                            )}
-                            <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
-                        </TableRow>
-                        </TableHead>
-                        <TableBody>
-                        {transferencias.length > 0 ? (
-                            transferencias.map(transferencia => (
-                            <Transferencia 
-                                key={transferencia.id_pago} 
-                                transferencia={transferencia} 
-                                session={session}
-                                onClaimSuccess={handleTransferenciaClaimed}
-                                onFeedback={handleFeedback}
-                                isAdmin={isAdmin}
-                                // Props nuevas para selección múltiple
-                                isSelectable={isAdmin && tabValue === 0}
-                                isSelected={selectedIds.includes(transferencia.id_pago)}
-                                onToggleSelect={handleToggleSelect}
-                            />
-                            ))
+            (isAdmin || (tabValue === 0 && filtersApplied) || (tabValue === 1) || (tabValue === 2)) ? (
+            <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                <TableContainer sx={{ maxHeight: 600 }}>
+                <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
+                    <TableHead>
+                    <TableRow>
+                        {/* HEADERS DIFERENTES SEGUN TAB */}
+                        {tabValue === 2 ? (
+                            // HEADERS TABLA MANUAL
+                            <>
+                                <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>ID Transacción</TableCell>
+                                <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Banco</TableCell>
+                                <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Fecha Carga</TableCell>
+                                <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Cliente Asignado</TableCell>
+                                <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }} align="right">Monto</TableCell>
+                            </>
                         ) : (
-                            <TableRow>
+                            // HEADERS TABLA MERCADO PAGO ORIGINALES
+                            <>
+                                {isAdmin && tabValue === 0 && (
+                                    <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>
+                                        <Checkbox 
+                                            indeterminate={selectedIds.length > 0 && selectedIds.length < transferencias.length}
+                                            checked={transferencias.length > 0 && selectedIds.length === transferencias.length}
+                                            onChange={handleSelectAll}
+                                            color="primary"
+                                        />
+                                    </TableCell>
+                                )}
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID Transacción</TableCell>
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción</TableCell>
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
+                                {isAdmin && <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>Reclamado Por</TableCell>}
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
+                            </>
+                        )}
+                    </TableRow>
+                    </TableHead>
+                    <TableBody>
+                    {transferencias.length > 0 ? (
+                        transferencias.map((t, idx) => {
+                            if (tabValue === 2) {
+                                // RENDER TABLA MANUAL
+                                return (
+                                    <TableRow key={t.id || idx} hover>
+                                        <TableCell>{t.id_transaccion}</TableCell>
+                                        <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small"/></TableCell>
+                                        <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                                        <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                                    </TableRow>
+                                );
+                            } else {
+                                // RENDER TABLA MP (Usando Componente Existente Original)
+                                return (
+                                    <Transferencia 
+                                        key={t.id_pago} 
+                                        transferencia={t} 
+                                        session={session}
+                                        onClaimSuccess={handleTransferenciaClaimed}
+                                        onFeedback={handleFeedback}
+                                        isAdmin={isAdmin}
+                                        isSelectable={isAdmin && tabValue === 0}
+                                        isSelected={selectedIds.includes(t.id_pago)}
+                                        onToggleSelect={handleToggleSelect}
+                                    />
+                                );
+                            }
+                        })
+                    ) : (
+                        <TableRow>
                             <TableCell colSpan={isAdmin ? 8 : 6} align="center" sx={{ py: 3 }}>
                                 <Typography variant="body1" color="text.secondary">
-                                    {isAdmin 
-                                     ? "No se encontraron transferencias." 
-                                     : (tabValue === 0 
-                                        ? "No se encontraron transferencias con esos filtros." 
-                                        : "Aún no has reclamado ninguna transferencia.")}
+                                    {tabValue === 2 ? "No hay transferencias de otros bancos cargadas." : "No se encontraron transferencias."}
                                 </Typography>
                             </TableCell>
-                            </TableRow>
-                        )}
-                        </TableBody>
-                    </Table>
-                    </TableContainer>
-                </Paper>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+                </TableContainer>
+            </Paper>
             ) : (
                 tabValue === 0 && !filtersApplied && !loading && !isAdmin && (
                     <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
@@ -650,13 +719,40 @@ function Dashboard({ session, onLogout }) {
             )
           )}
         </Box>
-
       </Container>
       
+      {/* MODAL MANUAL */}
+      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>Cargar Manual (Otros Bancos)</DialogTitle>
+            <DialogContent>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                    <TextField label="ID Transacción" name="id_transaccion" fullWidth value={manualData.id_transaccion} onChange={handleManualChange} placeholder="Ej: 999111222" />
+                    <FormControl fullWidth>
+                        <InputLabel>Banco</InputLabel>
+                        <Select name="banco" value={manualData.banco} label="Banco" onChange={handleManualChange}>
+                            <MenuItem value="Santander">Santander</MenuItem>
+                            <MenuItem value="Nacion">Nación</MenuItem>
+                            <MenuItem value="Santa Fe">Santa Fe</MenuItem>
+                            <MenuItem value="Macro">Macro</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <TextField label="Monto" name="monto" type="number" fullWidth value={manualData.monto} onChange={handleManualChange} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+                    <FormControl fullWidth>
+                        <InputLabel>Cliente</InputLabel>
+                        <Select name="userId" value={manualData.userId} label="Cliente" onChange={handleManualChange}>
+                            {usersList.map(u => <MenuItem key={u.id} value={u.id}>{u.email}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                </Box>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
+                <Button onClick={handleSubmitManual} variant="contained" disabled={loadingManual}>{loadingManual ? 'Guardando...' : 'Guardar'}</Button>
+            </DialogActions>
+      </Dialog>
+
       <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
-        <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
-          {feedback.message}
-        </Alert>
+        <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>{feedback.message}</Alert>
       </Snackbar>
     </Box>
   );
