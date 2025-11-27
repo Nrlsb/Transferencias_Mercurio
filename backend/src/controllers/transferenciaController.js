@@ -9,7 +9,6 @@ const getTransferencias = async (req, res) => {
     const resultados = await transferenciaService.getTransferencias(userId, isAdmin, filters);
     res.status(200).json(resultados);
   } catch (error) {
-    // Si es un error de validación de negocio (como el DNI corto), devolvemos 400
     if (error.message.includes('DNI debe tener al menos')) {
         return res.status(400).json({ error: error.message });
     }
@@ -37,10 +36,26 @@ const claimTransferencia = async (req, res) => {
   }
 };
 
-// NUEVO CONTROLADOR PARA ANULAR RECLAMO (SOLO ADMIN)
+// NUEVO: Alternar confirmación (Checkbox Admin)
+const toggleConfirmacion = async (req, res) => {
+  try {
+    if (req.user.is_admin !== true) {
+        return res.status(403).json({ error: "Acceso denegado." });
+    }
+
+    const { id } = req.params;
+    const { confirmed } = req.body; // Esperamos { confirmed: true/false }
+
+    const result = await transferenciaService.toggleConfirmacion(id, confirmed);
+    res.status(200).json({ message: "Estado de confirmación actualizado", data: result });
+  } catch (error) {
+    console.error("❌ Error en toggleConfirmacion:", error.message);
+    res.status(500).json({ error: "No se pudo actualizar la confirmación." });
+  }
+};
+
 const unclaimTransferencia = async (req, res) => {
     try {
-      // Verificación de seguridad adicional
       if (req.user.is_admin !== true) {
           return res.status(403).json({ error: "Acceso denegado. Solo administradores pueden liberar transferencias." });
       }
@@ -58,5 +73,6 @@ const unclaimTransferencia = async (req, res) => {
 module.exports = {
   getTransferencias,
   claimTransferencia,
-  unclaimTransferencia
+  unclaimTransferencia,
+  toggleConfirmacion
 };

@@ -7,8 +7,10 @@ const webhookController = require('../controllers/webhookController');
 // Rutas API (Protegidas)
 router.get('/api/transferencias', authMiddleware, transferenciaController.getTransferencias);
 router.post('/api/transferencias/:id/claim', authMiddleware, transferenciaController.claimTransferencia);
-// Nueva ruta para admin (Unclaim)
+
+// Rutas Admin
 router.post('/api/transferencias/:id/unclaim', authMiddleware, transferenciaController.unclaimTransferencia);
+router.put('/api/transferencias/:id/confirm', authMiddleware, transferenciaController.toggleConfirmacion); // Nueva ruta
 
 // Ruta Webhook (Pública)
 router.post('/webhook', webhookController.handleWebhook);

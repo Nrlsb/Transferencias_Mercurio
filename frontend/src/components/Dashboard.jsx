@@ -32,41 +32,53 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'; // Icono para confirmados
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import ListAltIcon from '@mui/icons-material/ListAlt'; // Icono para "Todas"
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Estado para controlar las pestañas (0: Buscar, 1: Historial)
+  // Estado para controlar las pestañas
+  // Admin: 0 -> Todas, 1 -> Confirmadas
+  // User: 0 -> Buscar, 1 -> Historial
   const [tabValue, setTabValue] = useState(0);
 
   // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
   const [dniFilter, setDniFilter] = useState('');
-  const [fechaFilter, setFechaFilter] = useState(''); // Fecha puntual (Usuarios)
+  const [fechaFilter, setFechaFilter] = useState('');
 
   // Filtros Admin
-  const [adminUserFilter, setAdminUserFilter] = useState(''); // Email quien reclamo
-  const [dateFromFilter, setDateFromFilter] = useState('');   // Fecha Desde
-  const [dateToFilter, setDateToFilter] = useState('');       // Fecha Hasta
-  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false); // Nuevo filtro Admin
+  const [adminUserFilter, setAdminUserFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false);
 
   const [filtersApplied, setFiltersApplied] = useState(false);
 
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
 
-  // Verificamos si es admin
   const isAdmin = session?.user?.is_admin === true;
 
   useEffect(() => {
-    // Si es admin, cargamos todo automáticamente al iniciar
+    // Lógica de carga automática según el Tab seleccionado y el Rol
     if (isAdmin) {
-        fetchTransferencias();
+        if (tabValue === 0) {
+            // Tab "Todas" (Gestión Global)
+            // Para admin, cargamos inicialmente todo o aplicamos filtros si ya existen?
+            // Vamos a cargar todo por defecto al entrar a la tab 0
+            fetchTransferencias();
+        } else if (tabValue === 1) {
+            // Tab "Confirmadas"
+            fetchTransferencias('?confirmed=true');
+        }
     } else {
+        // Usuario Normal
         if (tabValue === 1) {
             fetchTransferencias('?history=true');
         } else {
@@ -79,6 +91,8 @@ function Dashboard({ session, onLogout }) {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setError(null);
+    setTransferencias([]); // Limpiamos tabla al cambiar de tab para UX más limpia
+    // Nota: El useEffect se encargará de cargar los datos nuevos
   };
 
   const fetchTransferencias = async (queryParams = '') => {
@@ -136,44 +150,30 @@ function Dashboard({ session, onLogout }) {
     if (dniFilter) params.append('dni', dniFilter);
 
     if (isAdmin) {
-        // Filtros Admin
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
-        // Enviamos la fecha tal cual (YYYY-MM-DD), el backend se encarga de las horas
         if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
         if (dateToFilter) params.append('fechaHasta', dateToFilter);
-        // Nuevo filtro de solo reclamados
         if (onlyClaimedFilter) params.append('soloReclamados', 'true');
+        
+        // Si estamos en la tab de confirmadas, aseguramos que se mantenga ese filtro
+        if (tabValue === 1) params.append('confirmed', 'true');
+
     } else {
-        // Filtro Usuario: Fecha puntual (YYYY-MM-DD)
-        // CAMBIO: Se enviará solo la fecha, el backend ya maneja el rango del día completo.
         if (fechaFilter) {
-            params.append('fechaDesde', fechaFilter);
-            params.append('fechaHasta',QHacer => fechaFilter); // Usamos mismo día para desde/hasta = un día específico
-            // Nota: Podríamos adaptar el backend para recibir solo 'fecha' y tratarlo como día, 
-            // pero reutilizar la lógica de rangos (fechaDesde/Hasta) que ya tenemos en backend es más seguro.
-            // O simplemente enviamos 'fecha' y dejamos que el backend decida (como estaba antes con 10 mins o día).
-            // Vamos a enviar 'fechaDesde' y 'fechaHasta' con el mismo valor para buscar en TODO el día seleccionado.
              params.set('fechaDesde', fechaFilter);
              params.set('fechaHasta', fechaFilter);
         }
+        if (tabValue === 1) params.append('history', 'true');
     }
-    
-    if (tabValue === 1 && !isAdmin) params.append('history', 'true');
 
     fetchTransferencias(`?${params.toString()}`);
   };
 
   const handleTransferenciaClaimed = () => {
-    if (isAdmin) {
-        handleSearchSubmit(null);
-    } else if (tabValue === 0 && filtersApplied) {
-        handleSearchSubmit(null);
-    } else if (tabValue === 1) {
-        fetchTransferencias('?history=true');
-    }
+    // Recargamos la búsqueda actual para refrescar datos
+    handleSearchSubmit(null);
   };
 
-  // Función para generar y descargar el PDF
   const handleExportPDF = () => {
     if (!transferencias || transferencias.length === 0) {
         handleFeedback('No hay datos para exportar', 'warning');
@@ -181,70 +181,54 @@ function Dashboard({ session, onLogout }) {
     }
 
     const doc = new jsPDF();
-
-    // Título del documento
     doc.setFontSize(18);
     doc.text('Reporte de Transferencias - Mercurio', 14, 22);
 
-    // Metadata del reporte
     doc.setFontSize(10);
     doc.setTextColor(100);
     const fechaReporte = new Date().toLocaleString();
     doc.text(`Generado el: ${fechaReporte}`, 14, 28);
-    doc.text(`Generado por: ${session?.user?.email}`, 14, 33);
     
     if (isAdmin) {
         let filtrosTexto = 'Filtros aplicados: ';
         if (dateFromFilter) filtrosTexto += `Desde ${dateFromFilter} `;
         if (dateToFilter) filtrosTexto += `Hasta ${dateToFilter} `;
-        if (adminUserFilter) filtrosTexto += `Usuario: ${adminUserFilter} `;
-        if (onlyClaimedFilter) filtrosTexto += '(Solo Reclamados) ';
-        if (filtrosTexto === 'Filtros aplicados: ') filtrosTexto += 'Ninguno (Todas las transferencias)';
-        
+        if (tabValue === 1) filtrosTexto += '(SOLO CONFIRMADAS) ';
         doc.text(filtrosTexto, 14, 38);
     }
 
     // Definición de Columnas
-    const tableColumn = ["ID Pago", "Fecha", "Monto", "Estado", "Pagador", "Reclamado Por"];
+    const tableColumn = ["ID Pago", "Fecha", "Monto", "Estado", "Pagador", "Reclamado Por", "Confirmada"];
     
     // Mapeo de Datos
     const tableRows = transferencias.map(t => {
         const fechaFormatted = t.datos_completos?.date_approved 
-            ? new Date(t.datos_completos.date_approved).toLocaleDateString() + ' ' + new Date(t.datos_completos.date_approved).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            ? new Date(t.datos_completos.date_approved).toLocaleDateString() 
             : 'N/A';
-
         const montoFormatted = `$${(t.datos_completos?.transaction_amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-        
-        // Traducción de estado
-        let estado = t.estado;
-        if (estado === 'approved') estado = 'Aprobado';
-        else if (estado === 'pending') estado = 'Pendiente';
-        else if (estado === 'rejected') estado = 'Rechazado';
-
-        const pagador = t.datos_completos?.payer?.email || 'Desconocido';
         const reclamadoPor = t.usuarios?.email || (t.claimed_by ? 'ID: ' + t.claimed_by : 'No reclamado');
+        const confirmadaTxt = t.confirmed ? 'SI' : 'NO';
 
         return [
             t.id_pago,
             fechaFormatted,
             montoFormatted,
-            estado,
-            pagador,
-            reclamadoPor
+            t.estado,
+            t.datos_completos?.payer?.email || 'Desconocido',
+            reclamadoPor,
+            confirmadaTxt
         ];
     });
 
-    // Generación de la tabla con autoTable
     autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 45,
         theme: 'grid',
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [25, 118, 210] }, // Color primario #1976d2
+        headStyles: { fillColor: [25, 118, 210] },
     });
 
-    // Guardar archivo
     doc.save(`Mercurio_Reporte_${new Date().toISOString().split('T')[0]}.pdf`);
     handleFeedback('PDF generado exitosamente', 'success');
   };
@@ -285,24 +269,34 @@ function Dashboard({ session, onLogout }) {
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         
-        {!isAdmin && (
-            <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
-                <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
-                    <Tab icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />
-                    <Tab icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
-                </Tabs>
-            </Paper>
-        )}
+        {/* PESTAÑAS (TABS) DINÁMICAS */}
+        <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
+                {isAdmin ? (
+                    // Tabs para Admin
+                    [
+                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Todas las Transferencias" />,
+                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Transferencias Confirmadas" />
+                    ]
+                ) : (
+                    // Tabs para Usuario
+                    [
+                        <Tab key="user-search" icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />,
+                        <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
+                    ]
+                )}
+            </Tabs>
+        </Paper>
 
-        {(isAdmin || tabValue === 0) && (
+        {/* ÁREA DE FILTROS */}
+        {(isAdmin || (tabValue === 0 && !isAdmin)) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                    {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
+                    {isAdmin ? 'Filtros Globales' : 'Filtros de Búsqueda (Mínimo 2)'}
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
                         
-                        {/* 1. Filtros SOLO para Usuarios (Monto y DNI) */}
                         {!isAdmin && (
                             <>
                                 <Grid item xs={12} sm={6} md={3}>
@@ -335,7 +329,6 @@ function Dashboard({ session, onLogout }) {
                             </>
                         )}
 
-                        {/* 2. Filtros Específicos ADMIN vs USER */}
                         {isAdmin ? (
                             <>
                                 <Grid item xs={12} sm={6} md={3}>
@@ -375,7 +368,6 @@ function Dashboard({ session, onLogout }) {
                                     />
                                 </Grid>
                                 <Grid item xs={12} sm={6} md={2}>
-                                    {/* NUEVO FILTRO CHECKBOX */}
                                     <FormControlLabel
                                         control={
                                             <Checkbox 
@@ -391,7 +383,6 @@ function Dashboard({ session, onLogout }) {
                             </>
                         ) : (
                             <Grid item xs={12} sm={6} md={3}>
-                                {/* CAMBIO: Input type="date" en lugar de "datetime-local" */}
                                 <TextField
                                 fullWidth
                                 type="date"
@@ -413,11 +404,10 @@ function Dashboard({ session, onLogout }) {
                                 startIcon={<FilterListIcon />}
                                 sx={{ borderRadius: 20, height: '40px' }}
                                 >
-                                {isAdmin ? 'Buscar' : 'Filtrar'}
+                                {isAdmin ? 'Aplicar' : 'Filtrar'}
                                 </Button>
                             </Grid>
                             
-                            {/* Botón de Exportar PDF (Solo Admin) */}
                             {isAdmin && (
                                 <Grid item xs={6}>
                                     <Button 
@@ -440,7 +430,9 @@ function Dashboard({ session, onLogout }) {
         )}
 
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
-            {isAdmin ? 'Gestión Global de Transferencias' : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
+            {isAdmin 
+                ? (tabValue === 0 ? 'Gestión Global' : 'Transferencias Confirmadas') 
+                : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias Reclamadas')}
         </Typography>
 
         <Box>
@@ -468,14 +460,19 @@ function Dashboard({ session, onLogout }) {
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Pagador</TableCell>
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
-                            {/* Columna Extra Solo Admin */}
+                            {/* Columnas Admin */}
                             {isAdmin && (
+                                <>
                                 <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
                                     Reclamado Por
                                 </TableCell>
+                                {/* NUEVA COLUMNA CONFIRMADAS */}
+                                <TableCell sx={{ bgcolor: '#e8f5e9', fontWeight: 'bold', color: '#2e7d32', textAlign: 'center' }}>
+                                    Confirmadas
+                                </TableCell>
+                                </>
                             )}
                             <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
-                            {/* CAMBIO: Se eliminó la columna "Acción" que contenía el botón "Ver" */}
                         </TableRow>
                         </TableHead>
                         <TableBody>
@@ -492,7 +489,7 @@ function Dashboard({ session, onLogout }) {
                             ))
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 3 }}>
+                            <TableCell colSpan={isAdmin ? 8 : 6} align="center" sx={{ py: 3 }}>
                                 <Typography variant="body1" color="text.secondary">
                                     {isAdmin 
                                      ? "No se encontraron transferencias." 
