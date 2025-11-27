@@ -98,8 +98,12 @@ const Transferencia = ({ transferencia, session, onClaimSuccess, onFeedback, isA
   // Función para copiar solo el monto (valor)
   const handleCopyAmount = () => {
     if (transaction_amount) {
-        navigator.clipboard.writeText(transaction_amount.toString());
-        if (onFeedback) onFeedback(`Monto copiado: $${transaction_amount}`, 'info');
+        // Reemplazamos el punto por coma para facilitar el pegado en apps locales
+        const montoConComa = transaction_amount.toString().replace('.', ',');
+        navigator.clipboard.writeText(montoConComa);
+        
+        // Feedback visual
+        if (onFeedback) onFeedback(`Monto copiado: $${montoConComa}`, 'info');
     }
   };
 
