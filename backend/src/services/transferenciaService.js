@@ -187,9 +187,13 @@ class TransferenciaService {
   // --- MÉTODOS INDIVIDUALES MP ---
 
   async claimTransferencia(idPago, userId) {
+    // MODIFICADO: Ahora guarda fecha_reclamo al momento de reclamar
     const { data, error } = await supabase
       .from('transferencias')
-      .update({ claimed_by: userId })
+      .update({ 
+          claimed_by: userId,
+          fecha_reclamo: new Date().toISOString() 
+      })
       .eq('id_pago', idPago)
       .is('claimed_by', null)
       .select();
@@ -199,7 +203,7 @@ class TransferenciaService {
   }
 
   async unclaimTransferencia(idPago) {
-    const { data, error } = await supabase.from('transferencias').update({ claimed_by: null }).eq('id_pago', idPago).select();
+    const { data, error } = await supabase.from('transferencias').update({ claimed_by: null, fecha_reclamo: null }).eq('id_pago', idPago).select();
     if (error) throw new Error(error.message);
     return data[0];
   }
@@ -292,12 +296,11 @@ class TransferenciaService {
       return data;
   }
 
-  // --- NUEVO: REGISTRO DE CLICKS (AUDITORÍA) ---
+  // --- REGISTRO DE CLICKS (AUDITORÍA) ---
   async registerClick(id, isManual, userEmail) {
       const table = isManual ? 'transferencias_manuales' : 'transferencias';
       const idField = isManual ? 'id_transaccion' : 'id_pago';
 
-      // 1. Obtener registro actual
       const { data: current, error: fetchError } = await supabase
           .from(table)
           .select('clicks_count, clicks_history')
@@ -306,7 +309,6 @@ class TransferenciaService {
       
       if (fetchError) throw new Error(fetchError.message);
 
-      // 2. Preparar nuevos datos
       const newCount = (current.clicks_count || 0) + 1;
       const currentHistory = current.clicks_history || [];
       const newEntry = {
@@ -314,7 +316,6 @@ class TransferenciaService {
           user: userEmail
       };
       
-      // 3. Actualizar
       const { error: updateError } = await supabase
           .from(table)
           .update({

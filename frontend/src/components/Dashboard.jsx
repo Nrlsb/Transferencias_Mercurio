@@ -72,7 +72,7 @@ function Dashboard({ session, onLogout }) {
   // Estados para Selección Múltiple (Solo Admin Tab 0)
   const [selectedIds, setSelectedIds] = useState([]);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [openConfirmDialog, setOpenConfirmDialog] = useState(false); // NUEVO ESTADO PARA EL MODAL DE CONFIRMACIÓN
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
 
   // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
@@ -878,6 +878,11 @@ function Dashboard({ session, onLogout }) {
 
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
                                     
+                                    {/* NUEVO: Columna Fecha Reclamo para Cliente en Historial */}
+                                    {!isAdmin && tabValue === 1 && (
+                                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha Reclamo</TableCell>
+                                    )}
+
                                     {isAdmin && (
                                         <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
                                             Reclamado Por
@@ -922,6 +927,8 @@ function Dashboard({ session, onLogout }) {
                                         isSelectable={isAdmin && tabValue === 0}
                                         isSelected={selectedIds.includes(currentId)}
                                         onToggleSelect={handleToggleSelect}
+                                        // NUEVO PROP
+                                        showClaimDate={!isAdmin && tabValue === 1}
                                     />
                                 );
                             })
