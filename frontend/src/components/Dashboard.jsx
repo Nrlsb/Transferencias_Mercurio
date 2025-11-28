@@ -144,7 +144,7 @@ function Dashboard({ session, onLogout }) {
       }
   };
 
-  // 1. Fetch Genérico (Mercado Pago)
+  // 1. Fetch Genérico (Mercado Pago + Manuales Unificadas)
   const fetchTransferencias = async (queryParams = '') => {
     setLoading(true);
     setError(null);
@@ -178,7 +178,7 @@ function Dashboard({ session, onLogout }) {
     }
   };
 
-  // 2. Fetch Admin Manuales (Tabla separada)
+  // 2. Fetch Admin Manuales (Tabla separada - Solo NO confirmadas)
   const fetchManualTransfersAdmin = async () => {
     setLoading(true);
     setError(null);
@@ -196,31 +196,21 @@ function Dashboard({ session, onLogout }) {
     }
   };
 
-  // 3. Fetch Usuario Historial Combinado (MP + Manual)
+  // 3. Fetch Usuario Historial Combinado
   const fetchFullUserHistory = async () => {
       setLoading(true);
       setError(null);
       try {
-          // A. Traer historial MP
-          const resMP = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias?history=true`, {
+          // AHORA: El backend ya unifica MP + Manuales cuando history=true.
+          // Solo necesitamos hacer una única llamada, evitando duplicados.
+          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias?history=true`, {
              headers: { 'Authorization': `Bearer ${session.access_token}` } 
           });
-          const dataMP = resMP.ok ? await resMP.json() : [];
 
-          // B. Traer historial Manual
-          const resManual = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/manual-transfers/me`, {
-             headers: { 'Authorization': `Bearer ${session.access_token}` } 
-          });
-          const dataManual = resManual.ok ? await resManual.json() : [];
-
-          // C. Combinar y ordenar por fecha descendente
-          const combined = [...dataMP, ...dataManual].sort((a, b) => {
-              const dateA = new Date(a.fecha_aprobado || a.fecha_carga);
-              const dateB = new Date(b.fecha_aprobado || b.fecha_carga);
-              return dateB - dateA;
-          });
-
-          setTransferencias(combined);
+          if (!res.ok) throw new Error("Error al cargar historial");
+          
+          const data = await res.json();
+          setTransferencias(data);
 
       } catch (e) {
           setError("Error al cargar historial completo.");
@@ -237,7 +227,6 @@ function Dashboard({ session, onLogout }) {
     
     // Validación para usuario normal en Búsqueda
     if (!isAdmin && tabValue === 0) {
-        // Validación actualizada: DNI removido, ahora validamos Monto y Fecha
         const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
             setError("Por favor, ingrese Monto y Fecha para realizar la búsqueda.");
@@ -255,7 +244,6 @@ function Dashboard({ session, onLogout }) {
     const params = new URLSearchParams();
     
     if (montoFilter) params.append('monto', montoFilter);
-    // DNI Filter eliminado
 
     if (isAdmin) {
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
@@ -275,10 +263,7 @@ function Dashboard({ session, onLogout }) {
         }
     }
     
-    // Si estamos en historial de usuario (Tab 1), usamos la lógica de fetch combinada, no esta búsqueda
-    // Esta búsqueda aplica principalmente para Tab 0 (Admin y User) y Tab 1 (Admin)
     if (tabValue === 1 && !isAdmin) {
-        // Fallback por si acaso se dispara manual, pero useEffect lo maneja
         params.append('history', 'true');
     }
 
@@ -498,8 +483,8 @@ function Dashboard({ session, onLogout }) {
             <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
                 {isAdmin ? (
                     [
-                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global" />,
-                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial" />,
+                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global (MP)" />,
+                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial MP" />,
                         <Tab key="admin-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
                     ]
                 ) : (
@@ -515,7 +500,7 @@ function Dashboard({ session, onLogout }) {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
-                    ? (tabValue === 2 ? 'Otros Bancos' : (tabValue === 0 ? 'Pendientes' : 'Confirmadas MP')) 
+                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Pendientes MP' : 'Confirmadas MP')) 
                     : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias')}
             </Typography>
 
@@ -569,7 +554,7 @@ function Dashboard({ session, onLogout }) {
         {!(isAdmin && tabValue === 2) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                    {isAdmin ? 'Filtros Globales' : 'Filtros de Búsqueda (Mínimo 2)'}
+                    {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
@@ -591,7 +576,6 @@ function Dashboard({ session, onLogout }) {
                                     }}
                                     />
                                 </Grid>
-                                {/* DNI FILTER ELIMINADO AQUI */}
                             </>
                         )}
 
@@ -742,8 +726,6 @@ function Dashboard({ session, onLogout }) {
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID / Ref</TableCell>
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción / Banco</TableCell>
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-                                    
-                                    {/* COLUMNA PAGADOR ELIMINADA AQUI */}
 
                                     <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
                                     
