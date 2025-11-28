@@ -515,7 +515,7 @@ function Dashboard({ session, onLogout }) {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
-                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Pendientes' : 'Confirmadas MP')) 
+                    ? (tabValue === 2 ? 'Otros Bancos' : (tabValue === 0 ? 'Pendientes' : 'Confirmadas MP')) 
                     : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias')}
             </Typography>
 
