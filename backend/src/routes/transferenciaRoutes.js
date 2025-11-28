@@ -12,6 +12,9 @@ router.post('/api/transferencias/:id/claim', authMiddleware, transferenciaContro
 router.post('/api/transferencias/:id/unclaim', authMiddleware, transferenciaController.unclaimTransferencia);
 router.post('/api/transferencias/confirm-batch', authMiddleware, transferenciaController.confirmBatch);
 
+// NUEVA RUTA: Registrar Click
+router.post('/api/transferencias/:id/click', authMiddleware, transferenciaController.registerClick);
+
 // Rutas Manuales (Admin y User)
 router.get('/api/admin/users', authMiddleware, transferenciaController.getUsersList); 
 router.get('/api/admin/manual-transfers', authMiddleware, transferenciaController.getManualTransfers); 

@@ -117,6 +117,21 @@ const claimManualTransfer = async (req, res) => {
     }
 };
 
+// NUEVO: Registrar Click (Auditoría)
+const registerClick = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isManual } = req.body;
+        const userEmail = req.user.email; // Del token JWT
+
+        await transferenciaService.registerClick(id, isManual, userEmail);
+        res.status(200).json({ message: "Click registrado" });
+    } catch (error) {
+        console.error("❌ Error en registerClick:", error.message);
+        res.status(500).json({ error: "Error registrando click" });
+    }
+};
+
 module.exports = {
   getTransferencias,
   claimTransferencia,
@@ -126,5 +141,6 @@ module.exports = {
   getManualTransfers,
   getMyManualTransfers,
   createManualTransfer,
-  claimManualTransfer
+  claimManualTransfer,
+  registerClick
 };

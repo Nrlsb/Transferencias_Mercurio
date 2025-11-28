@@ -291,6 +291,41 @@ class TransferenciaService {
       if (error) throw error;
       return data;
   }
+
+  // --- NUEVO: REGISTRO DE CLICKS (AUDITORÍA) ---
+  async registerClick(id, isManual, userEmail) {
+      const table = isManual ? 'transferencias_manuales' : 'transferencias';
+      const idField = isManual ? 'id_transaccion' : 'id_pago';
+
+      // 1. Obtener registro actual
+      const { data: current, error: fetchError } = await supabase
+          .from(table)
+          .select('clicks_count, clicks_history')
+          .eq(idField, id)
+          .single();
+      
+      if (fetchError) throw new Error(fetchError.message);
+
+      // 2. Preparar nuevos datos
+      const newCount = (current.clicks_count || 0) + 1;
+      const currentHistory = current.clicks_history || [];
+      const newEntry = {
+          date: new Date().toISOString(),
+          user: userEmail
+      };
+      
+      // 3. Actualizar
+      const { error: updateError } = await supabase
+          .from(table)
+          .update({
+              clicks_count: newCount,
+              clicks_history: [...currentHistory, newEntry]
+          })
+          .eq(idField, id);
+
+      if (updateError) throw new Error(updateError.message);
+      return true;
+  }
 }
 
 module.exports = new TransferenciaService();

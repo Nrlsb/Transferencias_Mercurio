@@ -6,13 +6,16 @@ import {
   Chip,
   Box,
   Tooltip,
-  Checkbox
+  Checkbox,
+  Badge,
+  Popover
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
 
 const Transferencia = ({ 
     transferencia, 
@@ -31,8 +34,6 @@ const Transferencia = ({
   const idPago = isManual ? transferencia.id_transaccion : transferencia.id_pago;
   
   // Lógica de "Ya Reclamado"
-  // MP: claimed_by no es nulo.
-  // Manual: fecha_reclamo no es nula.
   const isClaimedMP = !isManual && !!transferencia.claimed_by;
   const isClaimedManual = isManual && !!transferencia.fecha_reclamo;
   
@@ -41,7 +42,7 @@ const Transferencia = ({
     ? transferencia.user_id === session?.user?.id 
     : transferencia.claimed_by === session?.user?.id;
 
-  // Si ya fue usada por mí (para feedback visual)
+  // Si ya fue usada por mí
   const isUsedByMe = isManual ? isClaimedManual : isMine;
 
   // Parsing Datos MP
@@ -79,6 +80,9 @@ const Transferencia = ({
   const [loadingClaim, setLoadingClaim] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
+  // Estados para Popover de historial de clicks
+  const [anchorEl, setAnchorEl] = useState(null);
+
   const getStatusLabel = (st) => {
       if (isManual) return 'Confirmado';
       switch (st) {
@@ -88,35 +92,55 @@ const Transferencia = ({
       }
   };
 
+  const handlePopoverOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+  };
+
+  const openPopover = Boolean(anchorEl);
+
   // --- LÓGICA UNIFICADA DE CLICK ---
   const handleCopyAndClaim = async () => {
     // 1. Siempre copiar al portapapeles primero
     await navigator.clipboard.writeText(idPago.toString());
 
-    // 2. Si soy ADMIN, solo notificamos copiado y terminamos.
+    // 2. Si soy ADMIN: Registrar el click (auditoría) y notificar
     if (isAdmin) {
-        if (onFeedback) onFeedback(`ID ${idPago} copiado (Admin)`, 'info');
+        try {
+            await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/click`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ isManual })
+            });
+            // No recargamos toda la tabla para no perder foco, pero el usuario verá el contador actualizado al recargar
+            if (onFeedback) onFeedback(`ID ${idPago} copiado (Click registrado)`, 'info');
+        } catch (e) {
+            console.error("Error registrando click", e);
+        }
         return;
     }
 
     // 3. Si soy USUARIO:
-    // Si ya está "usada" (claimed/reclamada), solo notificamos copiado.
     if (isUsedByMe) {
         if (onFeedback) onFeedback(`ID ${idPago} copiado (Ya reclamado)`, 'info');
         return;
     }
 
-    // 4. Si NO está usada, procedemos a "Reclamar" en el backend
+    // 4. Si NO está usada, procedemos a "Reclamar"
     try {
       setLoadingClaim(true);
       if (!session?.access_token) throw new Error("No hay sesión activa");
 
       let url = '';
       if (isManual) {
-          // Endpoint nuevo para manuales
           url = `${import.meta.env.VITE_API_BASE_URL}/api/manual-transfers/${idPago}/claim`;
       } else {
-          // Endpoint existente MP
           url = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/claim`;
       }
 
@@ -132,7 +156,7 @@ const Transferencia = ({
       if (!response.ok) throw new Error(data.error || "Error al procesar");
 
       if (onFeedback) onFeedback('¡Copiado y Marcado como Reclamado!', 'success');
-      if (onClaimSuccess) onClaimSuccess(); // Recarga la tabla para actualizar iconos
+      if (onClaimSuccess) onClaimSuccess(); 
 
     } catch (error) {
       if (onFeedback) onFeedback(error.message, 'error');
@@ -170,7 +194,6 @@ const Transferencia = ({
     <TableRow 
       hover 
       sx={{ 
-        // Color de fondo: Verde suave si ya fue reclamada por mí (MP o Manual)
         bgcolor: isUsedByMe ? '#e8f5e9' : 'inherit',
         transition: 'background-color 0.3s'
       }}
@@ -183,39 +206,80 @@ const Transferencia = ({
 
       {/* ID + ACCIÓN PRINCIPAL */}
       <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
-        <Tooltip title={isAdmin ? "Copiar ID" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
-          <Box 
-            onClick={handleCopyAndClaim}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1, 
-              cursor: 'pointer',
-              color: isUsedByMe ? 'success.main' : 'text.primary',
-              '&:hover': { color: 'primary.main' }
-            }}
-          >
-            {/* ÍCONO DE ESTADO */}
-            {loadingClaim ? (
-                <Typography variant="caption">...</Typography>
-            ) : isUsedByMe ? (
-                <DoneAllIcon fontSize="small" /> 
-            ) : isManual ? (
-                <AccountBalanceIcon fontSize="small" color="action" />
-            ) : isMine ? ( 
-                <AssignmentIndIcon fontSize="small" />
-            ) : (
-                isHovered && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
-            )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             
-            {/* TEXTO DEL ID */}
-            <Typography variant="body2" sx={{ fontWeight: isUsedByMe ? 'bold' : 'normal' }}>
-                {idPago}
-            </Typography>
-          </Box>
-        </Tooltip>
+            {/* COMPORTAMIENTO PRINCIPAL DE COPIADO */}
+            <Tooltip title={isAdmin ? "Copiar ID (Registra Click)" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
+                <Box 
+                    onClick={handleCopyAndClaim}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                    sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    cursor: 'pointer',
+                    color: isUsedByMe ? 'success.main' : 'text.primary',
+                    '&:hover': { color: 'primary.main' }
+                    }}
+                >
+                    {loadingClaim ? (
+                        <Typography variant="caption">...</Typography>
+                    ) : isUsedByMe ? (
+                        <DoneAllIcon fontSize="small" /> 
+                    ) : isManual ? (
+                        <AccountBalanceIcon fontSize="small" color="action" />
+                    ) : isMine ? ( 
+                        <AssignmentIndIcon fontSize="small" />
+                    ) : (
+                        isHovered && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
+                    )}
+                    
+                    <Typography variant="body2" sx={{ fontWeight: isUsedByMe ? 'bold' : 'normal' }}>
+                        {idPago}
+                    </Typography>
+                </Box>
+            </Tooltip>
+
+            {/* INDICADOR DE CLICKS (SOLO ADMIN) */}
+            {isAdmin && (transferencia.clicks_count > 0) && (
+                <>
+                    <Box 
+                        onMouseEnter={handlePopoverOpen}
+                        onMouseLeave={handlePopoverClose}
+                        sx={{ ml: 1, cursor: 'help', display: 'flex', alignItems: 'center' }}
+                    >
+                        <Badge badgeContent={transferencia.clicks_count} color="secondary" showZero>
+                            <TouchAppIcon fontSize="small" color="disabled" />
+                        </Badge>
+                    </Box>
+                    <Popover
+                        id="mouse-over-popover"
+                        sx={{ pointerEvents: 'none' }}
+                        open={openPopover}
+                        anchorEl={anchorEl}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                        onClose={handlePopoverClose}
+                        disableRestoreFocus
+                    >
+                        <Box sx={{ p: 2, maxHeight: 200, overflowY: 'auto' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Historial de Clicks:</Typography>
+                            {transferencia.clicks_history && transferencia.clicks_history.length > 0 ? (
+                                transferencia.clicks_history.slice().reverse().map((log, idx) => (
+                                    <Box key={idx} sx={{ mb: 1, borderBottom: '1px solid #eee', pb: 0.5 }}>
+                                        <Typography variant="caption" display="block" color="primary">{new Date(log.date).toLocaleString()}</Typography>
+                                        <Typography variant="caption" display="block" color="text.secondary">{log.user}</Typography>
+                                    </Box>
+                                ))
+                            ) : (
+                                <Typography variant="caption">Sin detalles.</Typography>
+                            )}
+                        </Box>
+                    </Popover>
+                </>
+            )}
+        </Box>
       </TableCell>
       
       {/* DESCRIPCIÓN / BANCO */}
@@ -228,8 +292,6 @@ const Transferencia = ({
       </TableCell>
 
       <TableCell>{formattedDate}</TableCell>
-
-      {/* COLUMNA PAGADOR ELIMINADA AQUI */}
 
       <TableCell>
         <Chip label={getStatusLabel(status)} color={isUsedByMe ? 'success' : (status === 'approved' ? 'success' : 'default')} size="small" variant="outlined" />
