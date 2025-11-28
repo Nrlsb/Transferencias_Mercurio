@@ -1,9 +1,7 @@
 const supabase = require('../config/supabase');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
-// Clave secreta para firmar JWT (Idealmente debería estar en .env)
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_super_seguro_cambialo_en_env';
+const config = require('../config/config'); // Importamos la configuración validada
 
 const register = async (req, res) => {
   const { email, password } = req.body;
@@ -44,7 +42,7 @@ const register = async (req, res) => {
         email: data.email, 
         is_admin: data.is_admin || false 
       }, 
-      JWT_SECRET, 
+      config.jwtSecret, 
       { expiresIn: '24h' }
     );
 
@@ -92,7 +90,7 @@ const login = async (req, res) => {
         email: user.email, 
         is_admin: user.is_admin || false 
       }, 
-      JWT_SECRET, 
+      config.jwtSecret, 
       { expiresIn: '24h' }
     );
 
@@ -114,6 +112,5 @@ const login = async (req, res) => {
 
 module.exports = {
   register,
-  login,
-  JWT_SECRET // Exportamos para usarlo en el middleware
+  login
 };

@@ -1,16 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
+const config = require('./config'); // Importamos la configuración ya validada
 
-dotenv.config();
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Error: Faltan las credenciales de Supabase en .env');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Ya no necesitamos validar aquí, config.js lo hizo al inicio.
+// Si config.js pasó, estas variables existen garantizadamente.
+const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
 
 module.exports = supabase;

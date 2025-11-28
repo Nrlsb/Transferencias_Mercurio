@@ -1,11 +1,10 @@
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 const transferenciaService = require("../services/transferenciaService");
-const dotenv = require("dotenv");
+const config = require("../config/config"); // Importamos configuración centralizada
 
-dotenv.config();
-
+// Inicializamos cliente con el token validado
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+  accessToken: config.mercadoPago.accessToken,
 });
 const payment = new Payment(client);
 

@@ -1,7 +1,5 @@
 const jwt = require('jsonwebtoken');
-
-// Usamos la misma clave secreta definida (o importada de .env)
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_secreto_super_seguro_cambialo_en_env';
+const config = require('./src/config/config'); // Importamos la configuración centralizada
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -17,8 +15,8 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ error: 'Acceso no autorizado: Token no proporcionado.' });
     }
 
-    // Validamos nuestro JWT propio
-    const decoded = jwt.verify(token, JWT_SECRET);
+    // Validamos usando el secreto validado desde config
+    const decoded = jwt.verify(token, config.jwtSecret);
 
     // Adjuntamos el usuario decodificado a la request
     // Esto asegura que transferenciaController siga funcionando con req.user.id
