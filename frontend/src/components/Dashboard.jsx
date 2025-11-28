@@ -109,6 +109,19 @@ function Dashboard({ session, onLogout }) {
       return acc + parseFloat(val);
   }, 0);
 
+  // NUEVO: Cálculo del Total SELECCIONADO
+  const totalSelectedAmount = transferencias.reduce((acc, curr) => {
+      // Determinar ID para comparar con selectedIds
+      const isManual = !!curr.banco;
+      const currentId = isManual ? curr.id_transaccion : curr.id_pago;
+
+      if (selectedIds.includes(currentId)) {
+          const val = isManual ? curr.monto : (curr.datos_completos?.transaction_amount || curr.monto || 0);
+          return acc + parseFloat(val);
+      }
+      return acc;
+  }, 0);
+
   useEffect(() => {
     if (isAdmin) {
         if (tabValue === 0) {
@@ -555,7 +568,7 @@ function Dashboard({ session, onLogout }) {
             </Tabs>
         </Paper>
 
-        {/* BARRA SUPERIOR CON TOTAL Y BOTÓN DE ACCIÓN */}
+        {/* BARRA SUPERIOR CON TOTALES Y BOTÓN DE ACCIÓN */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
@@ -563,30 +576,46 @@ function Dashboard({ session, onLogout }) {
                     : (tabValue === 0 ? 'Resultados de Búsqueda' : (tabValue === 2 ? 'Otros Bancos (Pendientes de Reclamo)' : 'Mis Transferencias'))}
             </Typography>
 
-            {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
-            {isAdmin && tabValue === 2 && (
-                 <Button 
-                    variant="contained" 
-                    color="secondary" 
-                    startIcon={<AddCircleOutlineIcon />}
-                    onClick={() => setOpenManualModal(true)}
-                    sx={{ borderRadius: 20 }}
-                 >
-                     Cargar Transferencia
-                 </Button>
-            )}
+            {/* GRUPO DE BOTONES Y TOTALES A LA DERECHA */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                
+                {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
+                {isAdmin && tabValue === 2 && (
+                    <Button 
+                        variant="contained" 
+                        color="secondary" 
+                        startIcon={<AddCircleOutlineIcon />}
+                        onClick={() => setOpenManualModal(true)}
+                        sx={{ borderRadius: 20 }}
+                    >
+                        Cargar Transferencia
+                    </Button>
+                )}
 
-            {/* DISPLAY TOTAL (SOLO PARA ADMIN) */}
-            {isAdmin && (
-                <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
-                    <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
-                        Total Vista: 
-                    </Typography>
-                    <Typography variant="h6" component="span" sx={{ ml: 1, color: '#0d47a1', fontWeight: 800 }}>
-                        ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                    </Typography>
-                </Paper>
-            )}
+                {/* DISPLAY TOTAL SELECCIONADO (NUEVO) - SOLO SI HAY SELECCIONADOS */}
+                {isAdmin && selectedIds.length > 0 && (
+                    <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e8f5e9', borderRadius: 20, border: '1px solid #a5d6a7' }}>
+                        <Typography variant="subtitle1" component="span" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                            Total Seleccionado: 
+                        </Typography>
+                        <Typography variant="h6" component="span" sx={{ ml: 1, color: '#1b5e20', fontWeight: 800 }}>
+                            ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                    </Paper>
+                )}
+
+                {/* DISPLAY TOTAL VISTA (SOLO PARA ADMIN) */}
+                {isAdmin && (
+                    <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
+                        <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
+                            Total Vista: 
+                        </Typography>
+                        <Typography variant="h6" component="span" sx={{ ml: 1, color: '#0d47a1', fontWeight: 800 }}>
+                            ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </Typography>
+                    </Paper>
+                )}
+            </Box>
         </Box>
 
         {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
@@ -641,13 +670,13 @@ function Dashboard({ session, onLogout }) {
                                 {/* FILTRO DE BANCOS MULTI-SELECT (NUEVO) */}
                                 <Grid item xs={12} sm={6} md={3}>
                                     <FormControl sx={{ width: '100%' }} size="small">
-                                        <InputLabel id="bank-filter-label">Bancos (Multi)</InputLabel>
+                                        <InputLabel id="bank-filter-label">Bancos</InputLabel>
                                         <Select
                                             labelId="bank-filter-label"
                                             multiple
                                             value={bankFilter}
                                             onChange={handleBankFilterChange}
-                                            input={<OutlinedInput label="Bancos (Multi)" />}
+                                            input={<OutlinedInput label="Bancos" />}
                                             renderValue={(selected) => selected.length === 0 ? 'Todos' : selected.join(', ')}
                                         >
                                             <MenuItem value="Todas">
@@ -666,10 +695,10 @@ function Dashboard({ session, onLogout }) {
                                 {/* FILTRO ESTADO RECLAMO (NUEVO) */}
                                 <Grid item xs={12} sm={6} md={2}>
                                     <FormControl fullWidth size="small">
-                                        <InputLabel>Estado Reclamo</InputLabel>
+                                        <InputLabel>Estado</InputLabel>
                                         <Select
                                             value={claimStatusFilter}
-                                            label="Estado Reclamo"
+                                            label="Estado"
                                             onChange={(e) => setClaimStatusFilter(e.target.value)}
                                         >
                                             {CLAIM_OPTIONS.map(opt => (
@@ -707,7 +736,7 @@ function Dashboard({ session, onLogout }) {
                                     <TextField
                                     fullWidth
                                     placeholder="email@ejemplo.com"
-                                    label="Email Reclamador"
+                                    label="Email"
                                     type="text"
                                     variant="outlined"
                                     value={adminUserFilter}
