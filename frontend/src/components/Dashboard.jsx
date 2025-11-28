@@ -98,13 +98,13 @@ function Dashboard({ session, onLogout }) {
   useEffect(() => {
     if (isAdmin) {
         if (tabValue === 0) {
-            // Tab 0 (Gestión Global): Trae las pendientes MP
+            // Tab 0 (Gestión Global): Trae las pendientes MP + Manuales
             fetchTransferencias('?confirmed=false');
         } else if (tabValue === 1) {
-            // Tab 1 (Confirmadas): Trae el historial de confirmadas MP
+            // Tab 1 (Confirmadas): Trae el historial unificado de confirmadas
             fetchTransferencias('?confirmed=true');
         } else if (tabValue === 2) {
-            // Tab 2: Otros Bancos (Manuales)
+            // Tab 2: Otros Bancos (Manuales NO confirmadas, vista específica)
             fetchManualTransfersAdmin();
             fetchUsersList(); // Cargar usuarios para el select
         }
@@ -318,7 +318,9 @@ function Dashboard({ session, onLogout }) {
 
   const handleSelectAll = (e) => {
       if (e.target.checked) {
-          setSelectedIds(transferencias.map(t => t.id_pago));
+          // Seleccionamos TODOS (Manuales y MP)
+          const allIds = transferencias.map(t => t.banco ? t.id_transaccion : t.id_pago);
+          setSelectedIds(allIds);
       } else {
           setSelectedIds([]);
       }
@@ -744,11 +746,14 @@ function Dashboard({ session, onLogout }) {
                             transferencias.map((t, idx) => {
                                 // DETECTAR SI ES MANUAL (tiene prop 'banco')
                                 const isManual = !!t.banco;
+                                
+                                // ID CORRECTO PARA LA KEY Y SELECCIÓN
+                                const currentId = isManual ? t.id_transaccion : t.id_pago;
 
                                 // RENDER ADMIN MANUAL TAB (VISTA DEDICADA)
                                 if (isAdmin && tabValue === 2) {
                                     return (
-                                        <TableRow key={t.id || idx} hover>
+                                        <TableRow key={currentId || idx} hover>
                                             <TableCell>{t.id_transaccion}</TableCell>
                                             <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small"/></TableCell>
                                             <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
@@ -759,18 +764,16 @@ function Dashboard({ session, onLogout }) {
                                 } 
                                 
                                 // RENDER USUARIO O ADMIN MP (VISTA UNIFICADA)
-                                // Utilizamos el componente Transferencia para ambos casos (MP y Manuales del historial)
                                 return (
                                     <Transferencia 
-                                        key={t.id_pago || t.id_transaccion || idx} 
+                                        key={currentId || idx} 
                                         transferencia={t} 
                                         session={session}
                                         onClaimSuccess={handleTransferenciaClaimed}
                                         onFeedback={handleFeedback}
                                         isAdmin={isAdmin}
-                                        // Props nuevas para selección múltiple
                                         isSelectable={isAdmin && tabValue === 0}
-                                        isSelected={selectedIds.includes(t.id_pago)}
+                                        isSelected={selectedIds.includes(currentId)}
                                         onToggleSelect={handleToggleSelect}
                                     />
                                 );
