@@ -498,8 +498,8 @@ function Dashboard({ session, onLogout }) {
             <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
                 {isAdmin ? (
                     [
-                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global (MP)" />,
-                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial MP" />,
+                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global" />,
+                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial" />,
                         <Tab key="admin-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
                     ]
                 ) : (
@@ -569,7 +569,7 @@ function Dashboard({ session, onLogout }) {
         {!(isAdmin && tabValue === 2) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                    {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
+                    {isAdmin ? 'Filtros Globales' : 'Filtros de Búsqueda (Mínimo 2)'}
                 </Typography>
                 <Box component="form" onSubmit={handleSearchSubmit}>
                     <Grid container spacing={2} alignItems="center">
