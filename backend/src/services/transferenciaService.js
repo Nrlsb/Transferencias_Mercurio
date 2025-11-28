@@ -42,14 +42,15 @@ class TransferenciaService {
         else if (confirmed === 'false') queryMan = queryMan.or('confirmed.eq.false,confirmed.is.null');
 
     } else if (isHistoryMode) {
-        // User History Logic
+        // User History Logic (CLIENTE - PESTAÑA HISTORIAL)
         queryMP = queryMP.eq('claimed_by', userId);
-        queryMan = queryMan.eq('user_id', userId);
+        
+        // MODIFICACIÓN: En el historial del cliente, SOLO mostramos las manuales YA RECLAMADAS
+        queryMan = queryMan.eq('user_id', userId).not('fecha_reclamo', 'is', null);
     } else {
         // User Search Logic (Solo MP disponibles)
         queryMP = queryMP.is('claimed_by', null);
-        // Los usuarios normales NO buscan manuales, solo las ven en su historial
-        // Así que anulamos la query manual para búsqueda normal de usuario
+        // Los usuarios normales NO buscan manuales, solo las ven en su historial o en "Otros Bancos"
         queryMan = null; 
     }
 
@@ -189,8 +190,7 @@ class TransferenciaService {
     let query = supabase
         .from('transferencias_manuales')
         .select('*, usuarios(email)')
-        // SOLO MOSTRAR LAS NO CONFIRMADAS EN LA PESTAÑA "OTROS BANCOS"
-        // Las confirmadas se verán ahora solo en "Historial" (Tab 1) vía getTransferencias
+        // SOLO MOSTRAR LAS NO CONFIRMADAS EN LA PESTAÑA "OTROS BANCOS" del Admin
         .or('confirmed.eq.false,confirmed.is.null') 
         .order('fecha_carga', { ascending: false });
 
@@ -199,9 +199,22 @@ class TransferenciaService {
     return data;
   }
 
-  async getManualTransfersByUserId(userId) {
-    // Este método lo usa el usuario para "Mi Historial", puede traer todo
-    const { data, error } = await supabase.from('transferencias_manuales').select('*').eq('user_id', userId).order('fecha_carga', { ascending: false });
+  async getManualTransfersByUserId(userId, onlyUnclaimed = false) {
+    // Este método lo usa el usuario para "Mis Transferencias Manuales"
+    let query = supabase
+        .from('transferencias_manuales')
+        .select('*')
+        .eq('user_id', userId);
+    
+    // Si onlyUnclaimed es true, solo traemos las que NO han sido reclamadas (fecha_reclamo es null)
+    // Esto es para la nueva pestaña "Otros Bancos" del cliente.
+    if (onlyUnclaimed) {
+        query = query.is('fecha_reclamo', null);
+    }
+
+    query = query.order('fecha_carga', { ascending: false });
+
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data;
   }

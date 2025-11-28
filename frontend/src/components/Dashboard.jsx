@@ -53,9 +53,9 @@ function Dashboard({ session, onLogout }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Tab 0: Pendientes MP (Admin) / Buscar (User)
-  // Tab 1: Historial MP (Admin) / Historial Completo (User)
-  // Tab 2: Otros Bancos (Admin)
+  // Tab 0: Pendientes MP (Admin) / Buscar Pagos (User)
+  // Tab 1: Historial MP (Admin) / Mi Historial (User)
+  // Tab 2: Otros Bancos (Admin - Gestión) / Otros Bancos (User - Pendientes de Reclamo)
   const [tabValue, setTabValue] = useState(0);
 
   // Estados para Selección Múltiple (Solo Admin Tab 0)
@@ -111,7 +111,12 @@ function Dashboard({ session, onLogout }) {
     } else {
         if (tabValue === 1) {
             // USUARIO: HISTORIAL COMPLETO (MP + MANUAL)
+            // Backend modificado: Solo trae manuales YA reclamadas
             fetchFullUserHistory();
+        } else if (tabValue === 2) {
+            // USUARIO: OTROS BANCOS (NUEVO)
+            // Trae solo las manuales asignadas SIN reclamar
+            fetchUserUnclaimedManuals();
         } else {
             // USUARIO: BUSQUEDA (Solo MP no reclamadas)
             setTransferencias([]);
@@ -203,6 +208,7 @@ function Dashboard({ session, onLogout }) {
       try {
           // AHORA: El backend ya unifica MP + Manuales cuando history=true.
           // Solo necesitamos hacer una única llamada, evitando duplicados.
+          // NOTA: El servicio backend se ha actualizado para traer solo manuales RECLAMADAS aquí.
           const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias?history=true`, {
              headers: { 'Authorization': `Bearer ${session.access_token}` } 
           });
@@ -220,12 +226,34 @@ function Dashboard({ session, onLogout }) {
       }
   };
 
+  // 4. NUEVO: Fetch Usuario "Otros Bancos" (Manuales NO reclamadas)
+  const fetchUserUnclaimedManuals = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/manual-transfers/me?unclaimed=true`, {
+           headers: { 'Authorization': `Bearer ${session.access_token}` } 
+        });
+
+        if (!res.ok) throw new Error("Error al cargar otros bancos");
+        
+        const data = await res.json();
+        setTransferencias(data);
+
+    } catch (e) {
+        setError("Error al cargar transferencias pendientes.");
+        console.error(e);
+    } finally {
+        setLoading(false);
+    }
+  };
+
   // --- MANEJO DE FORMULARIOS ---
 
   const handleSearchSubmit = (e) => {
     if(e) e.preventDefault();
     
-    // Validación para usuario normal en Búsqueda
+    // Validación para usuario normal en Búsqueda (Tab 0)
     if (!isAdmin && tabValue === 0) {
         const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
@@ -238,6 +266,11 @@ function Dashboard({ session, onLogout }) {
     // Si es Admin en Tab 2 (Manual), recargamos la lista manual
     if(isAdmin && tabValue === 2) {
         fetchManualTransfersAdmin();
+        return;
+    }
+    // Si es Usuario en Tab 2 (Otros Bancos), recargamos
+    if(!isAdmin && tabValue === 2) {
+        fetchUserUnclaimedManuals();
         return;
     }
 
@@ -304,8 +337,14 @@ function Dashboard({ session, onLogout }) {
   // --- ACCIONES EN TABLA ---
 
   const handleTransferenciaClaimed = () => {
-    // Recargar búsqueda actual
-    handleSearchSubmit(null);
+    // Cuando se reclama exitosamente:
+    if (!isAdmin && tabValue === 2) {
+        // Si estamos en "Otros Bancos", recargamos para que desaparezca
+        fetchUserUnclaimedManuals();
+    } else {
+        // En otros casos, recarga normal
+        handleSearchSubmit(null);
+    }
   };
 
   const handleToggleSelect = (id) => {
@@ -492,7 +531,8 @@ function Dashboard({ session, onLogout }) {
                 ) : (
                     [
                         <Tab key="user-search" icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />,
-                        <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />
+                        <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />,
+                        <Tab key="user-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" /> // NUEVA TAB USUARIO
                     ]
                 )}
             </Tabs>
@@ -503,7 +543,7 @@ function Dashboard({ session, onLogout }) {
             <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {isAdmin 
                     ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Pendientes MP' : 'Confirmadas MP')) 
-                    : (tabValue === 0 ? 'Resultados de Búsqueda' : 'Mis Transferencias')}
+                    : (tabValue === 0 ? 'Resultados de Búsqueda' : (tabValue === 2 ? 'Otros Bancos (Pendientes de Reclamo)' : 'Mis Transferencias'))}
             </Typography>
 
             {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
@@ -552,8 +592,8 @@ function Dashboard({ session, onLogout }) {
             </Alert>
         )}
 
-        {/* FILTROS (Ocultos solo en Admin Manuales Tab 2) */}
-        {!(isAdmin && tabValue === 2) && (
+        {/* FILTROS (Ocultos en Admin Manuales Tab 2 Y en User Otros Bancos Tab 2) */}
+        {!(tabValue === 2) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                     {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
@@ -712,7 +752,7 @@ function Dashboard({ session, onLogout }) {
                                     <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }} align="right">Monto</TableCell>
                                 </>
                             ) : (
-                                // HEADERS TABLA MERCADO PAGO / MIXTA
+                                // HEADERS TABLA MERCADO PAGO / MIXTA / OTROS BANCOS CLIENTE
                                 <>
                                     {isAdmin && tabValue === 0 && (
                                         <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>
@@ -786,7 +826,7 @@ function Dashboard({ session, onLogout }) {
                                      ? (tabValue === 2 ? "No hay transferencias de otros bancos cargadas." : "No se encontraron transferencias.") 
                                      : (tabValue === 0 
                                         ? "No se encontraron transferencias con esos filtros." 
-                                        : "Aún no tienes transferencias en tu historial.")}
+                                        : (tabValue === 2 ? "No tienes transferencias de otros bancos pendientes de reclamo." : "Aún no tienes transferencias en tu historial."))}
                                 </Typography>
                             </TableCell>
                             </TableRow>

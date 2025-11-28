@@ -80,7 +80,8 @@ const getManualTransfers = async (req, res) => {
 const getMyManualTransfers = async (req, res) => {
   try {
     const userId = req.user.id;
-    const result = await transferenciaService.getManualTransfersByUserId(userId);
+    const { unclaimed } = req.query; // Leemos el query param
+    const result = await transferenciaService.getManualTransfersByUserId(userId, unclaimed === 'true');
     res.status(200).json(result);
   } catch (error) {
     console.error("❌ Error en getMyManualTransfers:", error.message);
