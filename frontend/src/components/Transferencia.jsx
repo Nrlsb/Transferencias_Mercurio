@@ -26,7 +26,8 @@ const Transferencia = ({
     isAdmin,
     isSelectable,
     isSelected,
-    onToggleSelect
+    onToggleSelect,
+    showClaimDate // Recibimos la propiedad para mostrar la columna extra
 }) => {
   // Detectar tipo
   const isManual = !!transferencia.banco;
@@ -58,6 +59,12 @@ const Transferencia = ({
 
   const monto = isManual ? transferencia.monto : datosParsed.transaction_amount;
   const status = isManual ? 'approved' : datosParsed.status;
+
+  // Formateo de Fecha de Reclamo (con fallback seguro)
+  const rawClaimDate = isManual ? transferencia.fecha_reclamo : transferencia.fecha_reclamo; // En MP ahora también es fecha_reclamo
+  const formattedClaimDate = rawClaimDate 
+    ? new Date(rawClaimDate).toLocaleDateString() + ' ' + new Date(rawClaimDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '-';
 
   let displayName = 'Desconocido';
   let displayDescription = transferencia.descripcion || 'SIN DESCRIPCIÓN';
@@ -94,7 +101,6 @@ const Transferencia = ({
   };
 
   const handlePopoverOpen = (event) => {
-    // Solo abrir si hay historial
     if(transferencia.clicks_count > 0) {
         setAnchorEl(event.currentTarget);
     }
@@ -108,11 +114,9 @@ const Transferencia = ({
 
   // --- LÓGICA UNIFICADA DE CLICK ---
   const handleCopyAndClaim = async () => {
-    // 1. Siempre copiar al portapapeles primero
     await navigator.clipboard.writeText(idPago.toString());
 
     // 2. REGISTRO DE AUDITORÍA (SOLO USUARIOS NO ADMIN)
-    // Esta es la modificación clave: El admin NO registra clicks.
     if (!isAdmin) {
         try {
             await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/click`, {
@@ -123,26 +127,21 @@ const Transferencia = ({
                 },
                 body: JSON.stringify({ isManual })
             });
-            // No necesitamos feedback visual inmediato aquí para el cliente, 
-            // ya que el contador es una métrica para el admin.
         } catch (e) {
             console.error("Error registrando click", e);
         }
     }
 
-    // 3. Si soy ADMIN: Solo notificar copiado y terminar.
     if (isAdmin) {
         if (onFeedback) onFeedback(`ID ${idPago} copiado`, 'info');
         return;
     }
 
-    // 4. Si soy USUARIO:
     if (isUsedByMe) {
         if (onFeedback) onFeedback(`ID ${idPago} copiado (Ya reclamado)`, 'info');
         return;
     }
 
-    // 5. Si NO está usada y soy usuario, procedemos a "Reclamar"
     try {
       setLoadingClaim(true);
       if (!session?.access_token) throw new Error("No hay sesión activa");
@@ -166,8 +165,6 @@ const Transferencia = ({
       if (!response.ok) throw new Error(data.error || "Error al procesar");
 
       if (onFeedback) onFeedback('¡Copiado y Marcado como Reclamado!', 'success');
-      
-      // Actualizamos la tabla
       if (onClaimSuccess) onClaimSuccess(); 
 
     } catch (error) {
@@ -210,17 +207,16 @@ const Transferencia = ({
         transition: 'background-color 0.3s'
       }}
     >
+      {/* 1. CHECKBOX (Solo Admin Tab 0) */}
       {isSelectable && (
           <TableCell padding="checkbox">
               <Checkbox checked={isSelected || false} onChange={() => onToggleSelect(idPago)} color="primary" />
           </TableCell>
       )}
 
-      {/* ID + ACCIÓN PRINCIPAL */}
+      {/* 2. ID + CLICK (Todos) */}
       <TableCell component="th" scope="row" sx={{ fontWeight: 'medium' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            
-            {/* COMPORTAMIENTO PRINCIPAL DE COPIADO */}
             <Tooltip title={isAdmin ? "Copiar ID" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
                 <Box 
                     onClick={handleCopyAndClaim}
@@ -235,17 +231,11 @@ const Transferencia = ({
                     '&:hover': { color: 'primary.main' }
                     }}
                 >
-                    {loadingClaim ? (
-                        <Typography variant="caption">...</Typography>
-                    ) : isUsedByMe ? (
-                        <DoneAllIcon fontSize="small" /> 
-                    ) : isManual ? (
-                        <AccountBalanceIcon fontSize="small" color="action" />
-                    ) : isMine ? ( 
-                        <AssignmentIndIcon fontSize="small" />
-                    ) : (
-                        isHovered && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />
-                    )}
+                    {loadingClaim ? <Typography variant="caption">...</Typography> 
+                    : isUsedByMe ? <DoneAllIcon fontSize="small" /> 
+                    : isManual ? <AccountBalanceIcon fontSize="small" color="action" />
+                    : isMine ? <AssignmentIndIcon fontSize="small" />
+                    : (isHovered && !isAdmin && <ContentCopyIcon fontSize="small" color="action" />)}
                     
                     <Typography variant="body2" sx={{ fontWeight: isUsedByMe ? 'bold' : 'normal' }}>
                         {idPago}
@@ -253,26 +243,14 @@ const Transferencia = ({
                 </Box>
             </Tooltip>
 
-            {/* INDICADOR DE CLICKS (SOLO ADMIN) - SIEMPRE VISIBLE */}
             {isAdmin && (
                 <>
                     <Box 
                         onMouseEnter={handlePopoverOpen}
                         onMouseLeave={handlePopoverClose}
-                        sx={{ 
-                            ml: 1, 
-                            cursor: 'help', 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            opacity: transferencia.clicks_count > 0 ? 1 : 0.3 // Semi-transparente si es 0
-                        }}
+                        sx={{ ml: 1, cursor: 'help', display: 'flex', alignItems: 'center', opacity: transferencia.clicks_count > 0 ? 1 : 0.3 }}
                     >
-                        <Badge 
-                            badgeContent={transferencia.clicks_count || 0} 
-                            color="secondary" 
-                            showZero
-                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                        >
+                        <Badge badgeContent={transferencia.clicks_count || 0} color="secondary" showZero anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
                             <TouchAppIcon fontSize="small" color="action" />
                         </Badge>
                     </Box>
@@ -307,7 +285,7 @@ const Transferencia = ({
         </Box>
       </TableCell>
       
-      {/* DESCRIPCIÓN / BANCO */}
+      {/* 3. DESCRIPCION (Todos) */}
       <TableCell>
         {isManual ? (
             <Chip label={transferencia.banco} size="small" color={isUsedByMe ? "success" : "primary"} variant="outlined"/>
@@ -316,13 +294,24 @@ const Transferencia = ({
         )}
       </TableCell>
 
+      {/* 4. FECHA (Todos) */}
       <TableCell>{formattedDate}</TableCell>
 
+      {/* 5. ESTADO (Todos) */}
       <TableCell>
         <Chip label={getStatusLabel(status)} color={isUsedByMe ? 'success' : (status === 'approved' ? 'success' : 'default')} size="small" variant="outlined" />
       </TableCell>
 
-      {/* ADMIN: USUARIO ASIGNADO / RECLAMADO POR */}
+      {/* 6. FECHA RECLAMO (Solo Cliente Historial - CORRECCIÓN VISUAL) */}
+      {showClaimDate && (
+          <TableCell>
+              <Typography variant="body2" color="text.secondary" sx={{fontSize: '0.85rem'}}>
+                  {formattedClaimDate}
+              </Typography>
+          </TableCell>
+      )}
+
+      {/* 7. ADMIN USER (Solo Admin) */}
       {isAdmin && (
         <TableCell>
             {(isManual ? transferencia.user_id : transferencia.claimed_by) ? (
@@ -340,7 +329,7 @@ const Transferencia = ({
         </TableCell>
       )}
 
-      {/* MONTO + COPY */}
+      {/* 8. MONTO (Todos - A la derecha) */}
       <TableCell align="right" sx={{ fontWeight: 'bold' }}>
         <Tooltip title="Copiar Monto" arrow placement="top">
             <Box
