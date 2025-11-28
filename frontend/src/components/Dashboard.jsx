@@ -82,8 +82,9 @@ function Dashboard({ session, onLogout }) {
   const [dateToFilter, setDateToFilter] = useState('');
   
   // NUEVOS FILTROS ADMIN
-  const [bankFilter, setBankFilter] = useState([]); // Array para múltiple selección
-  const [claimStatusFilter, setClaimStatusFilter] = useState('all'); // Select único
+  // CAMBIO: Inicializamos con "Todas" por defecto
+  const [bankFilter, setBankFilter] = useState(['Todas']); 
+  const [claimStatusFilter, setClaimStatusFilter] = useState('all'); 
 
   const [filtersApplied, setFiltersApplied] = useState(false);
 
@@ -109,9 +110,8 @@ function Dashboard({ session, onLogout }) {
       return acc + parseFloat(val);
   }, 0);
 
-  // NUEVO: Cálculo del Total SELECCIONADO
+  // Cálculo del Total SELECCIONADO
   const totalSelectedAmount = transferencias.reduce((acc, curr) => {
-      // Determinar ID para comparar con selectedIds
       const isManual = !!curr.banco;
       const currentId = isManual ? curr.id_transaccion : curr.id_pago;
 
@@ -309,6 +309,8 @@ function Dashboard({ session, onLogout }) {
         
         // NUEVOS FILTROS
         if (claimStatusFilter !== 'all') params.append('estadoReclamo', claimStatusFilter);
+        
+        // Enviamos el array unido por comas. Si tiene 'Todas', el backend lo maneja (o si solo enviamos 'Todas' es igual).
         if (bankFilter.length > 0) params.append('bancos', bankFilter.join(','));
         
         if (tabValue === 1) {
@@ -330,9 +332,37 @@ function Dashboard({ session, onLogout }) {
     fetchTransferencias(`?${params.toString()}`);
   };
 
+  // CAMBIO: Lógica de Exclusión Mutua para Filtro de Bancos
   const handleBankFilterChange = (event) => {
     const { target: { value } } = event;
-    setBankFilter(typeof value === 'string' ? value.split(',') : value);
+    const val = typeof value === 'string' ? value.split(',') : value;
+
+    // Si la nueva selección incluye "Todas"
+    if (val.includes('Todas')) {
+        // Caso 1: Solo está "Todas" (seleccion inicial o re-seleccion unica)
+        if (val.length === 1) {
+            setBankFilter(val);
+        } else {
+            // Caso 2: Había otros bancos y el usuario hizo click en "Todas"
+            // (El ultimo elemento agregado es "Todas")
+            if (val[val.length - 1] === 'Todas') {
+                setBankFilter(['Todas']);
+            } else {
+                // Caso 3: Estaba "Todas" seleccionado y el usuario clickeó un banco específico
+                // (Quitamos "Todas" y dejamos los específicos)
+                setBankFilter(val.filter(b => b !== 'Todas'));
+            }
+        }
+    } else {
+        // "Todas" no está en la selección
+        if (val.length === 0) {
+            // Si deselecciona todo, volver a "Todas" por defecto
+            setBankFilter(['Todas']);
+        } else {
+            // Selección normal de bancos específicos
+            setBankFilter(val);
+        }
+    }
   };
 
   const handleManualChange = (e) => {
@@ -592,7 +622,7 @@ function Dashboard({ session, onLogout }) {
                     </Button>
                 )}
 
-                {/* DISPLAY TOTAL SELECCIONADO (NUEVO) - SOLO SI HAY SELECCIONADOS */}
+                {/* DISPLAY TOTAL SELECCIONADO - SOLO SI HAY SELECCIONADOS */}
                 {isAdmin && selectedIds.length > 0 && (
                     <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e8f5e9', borderRadius: 20, border: '1px solid #a5d6a7' }}>
                         <Typography variant="subtitle1" component="span" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
@@ -677,7 +707,7 @@ function Dashboard({ session, onLogout }) {
                                             value={bankFilter}
                                             onChange={handleBankFilterChange}
                                             input={<OutlinedInput label="Bancos" />}
-                                            renderValue={(selected) => selected.length === 0 ? 'Todos' : selected.join(', ')}
+                                            renderValue={(selected) => selected.join(', ')}
                                         >
                                             <MenuItem value="Todas">
                                                 <ListItemText primary="-- Todos los bancos --" />
