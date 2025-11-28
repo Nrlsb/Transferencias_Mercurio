@@ -36,7 +36,8 @@ import {
   InputLabel,
   FormControl,
   OutlinedInput,
-  ListItemText
+  ListItemText,
+  DialogContentText
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -71,6 +72,7 @@ function Dashboard({ session, onLogout }) {
   // Estados para Selección Múltiple (Solo Admin Tab 0)
   const [selectedIds, setSelectedIds] = useState([]);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false); // NUEVO ESTADO PARA EL MODAL DE CONFIRMACIÓN
 
   // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
@@ -82,7 +84,6 @@ function Dashboard({ session, onLogout }) {
   const [dateToFilter, setDateToFilter] = useState('');
   
   // NUEVOS FILTROS ADMIN
-  // CAMBIO: Inicializamos con "Todas" por defecto
   const [bankFilter, setBankFilter] = useState(['Todas']); 
   const [claimStatusFilter, setClaimStatusFilter] = useState('all'); 
 
@@ -310,7 +311,7 @@ function Dashboard({ session, onLogout }) {
         // NUEVOS FILTROS
         if (claimStatusFilter !== 'all') params.append('estadoReclamo', claimStatusFilter);
         
-        // Enviamos el array unido por comas. Si tiene 'Todas', el backend lo maneja (o si solo enviamos 'Todas' es igual).
+        // Enviamos el array unido por comas.
         if (bankFilter.length > 0) params.append('bancos', bankFilter.join(','));
         
         if (tabValue === 1) {
@@ -425,11 +426,15 @@ function Dashboard({ session, onLogout }) {
       }
   };
 
-  const handleBatchConfirm = async () => {
+  // --- CAMBIO: Solo abre el modal ---
+  const handleBatchConfirm = () => {
       if (selectedIds.length === 0) return;
-      
-      if (!window.confirm(`¿Estás seguro de confirmar ${selectedIds.length} transferencias? Desaparecerán de la lista de pendientes.`)) return;
+      setOpenConfirmDialog(true);
+  };
 
+  // --- NUEVA FUNCIÓN: Ejecuta la acción ---
+  const executeBatchConfirm = async () => {
+      setOpenConfirmDialog(false);
       setIsConfirming(true);
       try {
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/confirm-batch`, {
@@ -1015,6 +1020,39 @@ function Dashboard({ session, onLogout }) {
                     {loadingManual ? 'Guardando...' : 'Guardar'}
                 </Button>
             </DialogActions>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMACIÓN MASIVA (NUEVO) */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Confirmar Acción"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Estás a punto de confirmar <strong>{selectedIds.length}</strong> transferencias.
+            <br />
+            El monto total seleccionado es:
+            <br />
+            <Typography component="span" variant="h5" color="success.main" fontWeight="bold">
+                ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            </Typography>
+            <br /><br />
+            Estas transferencias desaparecerán de la lista de pendientes y pasarán al historial. ¿Deseas continuar?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDialog(false)} color="inherit">
+            Cancelar
+          </Button>
+          <Button onClick={executeBatchConfirm} variant="contained" color="success" autoFocus>
+            Confirmar
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
