@@ -15,8 +15,8 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
-import TouchAppIcon from '@mui/icons-material/TouchApp'; // Icono de "Dedo" clickeando
-import VisibilityIcon from '@mui/icons-material/Visibility'; // Opcional: Icono de Ojo
+import TouchAppIcon from '@mui/icons-material/TouchApp'; 
+import VisibilityIcon from '@mui/icons-material/Visibility'; 
 
 const Transferencia = ({ 
     transferencia, 
@@ -111,8 +111,9 @@ const Transferencia = ({
     // 1. Siempre copiar al portapapeles primero
     await navigator.clipboard.writeText(idPago.toString());
 
-    // 2. Si soy ADMIN: Registrar el click (auditoría) y notificar
-    if (isAdmin) {
+    // 2. REGISTRO DE AUDITORÍA (SOLO USUARIOS NO ADMIN)
+    // Esta es la modificación clave: El admin NO registra clicks.
+    if (!isAdmin) {
         try {
             await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/${idPago}/click`, {
                 method: 'POST',
@@ -122,26 +123,26 @@ const Transferencia = ({
                 },
                 body: JSON.stringify({ isManual })
             });
-            
-            if (onFeedback) onFeedback(`ID ${idPago} copiado`, 'info');
-            
-            // CRÍTICO: Llamamos a onClaimSuccess para que el Dashboard recargue los datos
-            // y se actualice el contador de clicks visualmente.
-            if (onClaimSuccess) onClaimSuccess(); 
-
+            // No necesitamos feedback visual inmediato aquí para el cliente, 
+            // ya que el contador es una métrica para el admin.
         } catch (e) {
             console.error("Error registrando click", e);
         }
+    }
+
+    // 3. Si soy ADMIN: Solo notificar copiado y terminar.
+    if (isAdmin) {
+        if (onFeedback) onFeedback(`ID ${idPago} copiado`, 'info');
         return;
     }
 
-    // 3. Si soy USUARIO:
+    // 4. Si soy USUARIO:
     if (isUsedByMe) {
         if (onFeedback) onFeedback(`ID ${idPago} copiado (Ya reclamado)`, 'info');
         return;
     }
 
-    // 4. Si NO está usada, procedemos a "Reclamar"
+    // 5. Si NO está usada y soy usuario, procedemos a "Reclamar"
     try {
       setLoadingClaim(true);
       if (!session?.access_token) throw new Error("No hay sesión activa");
@@ -165,6 +166,8 @@ const Transferencia = ({
       if (!response.ok) throw new Error(data.error || "Error al procesar");
 
       if (onFeedback) onFeedback('¡Copiado y Marcado como Reclamado!', 'success');
+      
+      // Actualizamos la tabla
       if (onClaimSuccess) onClaimSuccess(); 
 
     } catch (error) {
@@ -218,7 +221,7 @@ const Transferencia = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             
             {/* COMPORTAMIENTO PRINCIPAL DE COPIADO */}
-            <Tooltip title={isAdmin ? "Copiar ID (Registra Click)" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
+            <Tooltip title={isAdmin ? "Copiar ID" : (isUsedByMe ? "Copiar ID (Ya reclamado)" : "Click para Copiar y Reclamar")} arrow>
                 <Box 
                     onClick={handleCopyAndClaim}
                     onMouseEnter={() => setIsHovered(true)}
@@ -284,7 +287,7 @@ const Transferencia = ({
                         disableRestoreFocus
                     >
                         <Box sx={{ p: 2, maxHeight: 200, overflowY: 'auto' }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Historial de Clicks:</Typography>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Historial de Clicks (Clientes):</Typography>
                             {transferencia.clicks_history && transferencia.clicks_history.length > 0 ? (
                                 transferencia.clicks_history.slice().reverse().map((log, idx) => (
                                     <Box key={idx} sx={{ mb: 1, borderBottom: '1px solid #eee', pb: 0.5 }}>
