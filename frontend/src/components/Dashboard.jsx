@@ -34,7 +34,9 @@ import {
   MenuItem,
   Select,
   InputLabel,
-  FormControl
+  FormControl,
+  OutlinedInput,
+  ListItemText
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -48,21 +50,29 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; 
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
+// Constantes para filtros
+const BANK_OPTIONS = ['Mercado Pago', 'Santander', 'Nacion', 'Santa Fe', 'Macro'];
+const CLAIM_OPTIONS = [
+  { value: 'all', label: 'Todas' },
+  { value: 'claimed', label: 'Reclamadas' },
+  { value: 'unclaimed', label: 'No Reclamadas' }
+];
+
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Tab 0: Pendientes MP (Admin) / Buscar Pagos (User)
-  // Tab 1: Historial MP (Admin) / Mi Historial (User)
-  // Tab 2: Otros Bancos (Admin - Gestión) / Otros Bancos (User - Pendientes de Reclamo)
+  // Tab 0: Pendientes MP (Admin) / Buscar (User)
+  // Tab 1: Historial MP (Admin) / Historial Completo (User)
+  // Tab 2: Otros Bancos (Admin) / Otros Bancos (User)
   const [tabValue, setTabValue] = useState(0);
 
   // Estados para Selección Múltiple (Solo Admin Tab 0)
   const [selectedIds, setSelectedIds] = useState([]);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // Filtros Búsqueda Comunes (DNI Eliminado)
+  // Filtros Búsqueda Comunes
   const [montoFilter, setMontoFilter] = useState('');
   const [fechaFilter, setFechaFilter] = useState('');
 
@@ -70,7 +80,11 @@ function Dashboard({ session, onLogout }) {
   const [adminUserFilter, setAdminUserFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
-  const [onlyClaimedFilter, setOnlyClaimedFilter] = useState(false);
+  
+  // NUEVOS FILTROS ADMIN
+  const [bankFilter, setBankFilter] = useState([]); // Array para múltiple selección
+  const [claimStatusFilter, setClaimStatusFilter] = useState('all'); // Select único
+
   const [filtersApplied, setFiltersApplied] = useState(false);
 
   // Estados para Carga Manual (Tab 2 y User History)
@@ -111,11 +125,9 @@ function Dashboard({ session, onLogout }) {
     } else {
         if (tabValue === 1) {
             // USUARIO: HISTORIAL COMPLETO (MP + MANUAL)
-            // Backend modificado: Solo trae manuales YA reclamadas
             fetchFullUserHistory();
         } else if (tabValue === 2) {
             // USUARIO: OTROS BANCOS (NUEVO)
-            // Trae solo las manuales asignadas SIN reclamar
             fetchUserUnclaimedManuals();
         } else {
             // USUARIO: BUSQUEDA (Solo MP no reclamadas)
@@ -208,7 +220,6 @@ function Dashboard({ session, onLogout }) {
       try {
           // AHORA: El backend ya unifica MP + Manuales cuando history=true.
           // Solo necesitamos hacer una única llamada, evitando duplicados.
-          // NOTA: El servicio backend se ha actualizado para traer solo manuales RECLAMADAS aquí.
           const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias?history=true`, {
              headers: { 'Authorization': `Bearer ${session.access_token}` } 
           });
@@ -253,7 +264,7 @@ function Dashboard({ session, onLogout }) {
   const handleSearchSubmit = (e) => {
     if(e) e.preventDefault();
     
-    // Validación para usuario normal en Búsqueda (Tab 0)
+    // Validación para usuario normal en Búsqueda
     if (!isAdmin && tabValue === 0) {
         const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
         if(activeFilters < 2) {
@@ -282,7 +293,10 @@ function Dashboard({ session, onLogout }) {
         if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
         if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
         if (dateToFilter) params.append('fechaHasta', dateToFilter);
-        if (onlyClaimedFilter) params.append('soloReclamados', 'true');
+        
+        // NUEVOS FILTROS
+        if (claimStatusFilter !== 'all') params.append('estadoReclamo', claimStatusFilter);
+        if (bankFilter.length > 0) params.append('bancos', bankFilter.join(','));
         
         if (tabValue === 1) {
             params.append('confirmed', 'true');
@@ -301,6 +315,11 @@ function Dashboard({ session, onLogout }) {
     }
 
     fetchTransferencias(`?${params.toString()}`);
+  };
+
+  const handleBankFilterChange = (event) => {
+    const { target: { value } } = event;
+    setBankFilter(typeof value === 'string' ? value.split(',') : value);
   };
 
   const handleManualChange = (e) => {
@@ -337,12 +356,10 @@ function Dashboard({ session, onLogout }) {
   // --- ACCIONES EN TABLA ---
 
   const handleTransferenciaClaimed = () => {
-    // Cuando se reclama exitosamente:
     if (!isAdmin && tabValue === 2) {
-        // Si estamos en "Otros Bancos", recargamos para que desaparezca
+        // Si estamos en "Otros Bancos" (usuario), recargamos esa vista
         fetchUserUnclaimedManuals();
     } else {
-        // En otros casos, recarga normal
         handleSearchSubmit(null);
     }
   };
@@ -437,7 +454,7 @@ function Dashboard({ session, onLogout }) {
              ];
         });
     } else {
-        // CASO: Mercado Pago (Admin/User) O Mixto (User Historial) - SIN COLUMNA PAGADOR
+        // CASO: Mercado Pago (Admin/User) O Mixto (User Historial)
         tableColumn = ["ID / Ref", "Fecha", "Monto", "Estado", "Origen"];
         
         tableRows = transferencias.map(t => {
@@ -532,7 +549,7 @@ function Dashboard({ session, onLogout }) {
                     [
                         <Tab key="user-search" icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />,
                         <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />,
-                        <Tab key="user-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" /> // NUEVA TAB USUARIO
+                        <Tab key="user-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
                     ]
                 )}
             </Tabs>
@@ -592,8 +609,8 @@ function Dashboard({ session, onLogout }) {
             </Alert>
         )}
 
-        {/* FILTROS (Ocultos en Admin Manuales Tab 2 Y en User Otros Bancos Tab 2) */}
-        {!(tabValue === 2) && (
+        {/* FILTROS (Ocultos solo en Admin Manuales Tab 2) */}
+        {!(isAdmin && tabValue === 2) && (
             <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
                 <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                     {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda (Mínimo 2)'}
@@ -602,39 +619,66 @@ function Dashboard({ session, onLogout }) {
                     <Grid container spacing={2} alignItems="center">
                         
                         {!isAdmin && (
-                            <>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <TextField
-                                    fullWidth
-                                    placeholder="Monto Exacto"
-                                    type="number"
-                                    label="Monto"
-                                    variant="outlined"
-                                    value={montoFilter}
-                                    onChange={(e) => setMontoFilter(e.target.value)}
-                                    size="small"
-                                    InputProps={{
-                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                    }}
-                                    />
-                                </Grid>
-                            </>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField
+                                fullWidth
+                                placeholder="Monto Exacto"
+                                type="number"
+                                label="Monto"
+                                variant="outlined"
+                                value={montoFilter}
+                                onChange={(e) => setMontoFilter(e.target.value)}
+                                size="small"
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                }}
+                                />
+                            </Grid>
                         )}
 
                         {isAdmin ? (
                             <>
+                                {/* FILTRO DE BANCOS MULTI-SELECT (NUEVO) */}
                                 <Grid item xs={12} sm={6} md={3}>
-                                    <TextField
-                                    fullWidth
-                                    placeholder="email@ejemplo.com"
-                                    label="Email quien Reclamó"
-                                    type="text"
-                                    variant="outlined"
-                                    value={adminUserFilter}
-                                    onChange={(e) => setAdminUserFilter(e.target.value)}
-                                    size="small"
-                                    />
+                                    <FormControl sx={{ width: '100%' }} size="small">
+                                        <InputLabel id="bank-filter-label">Bancos (Multi)</InputLabel>
+                                        <Select
+                                            labelId="bank-filter-label"
+                                            multiple
+                                            value={bankFilter}
+                                            onChange={handleBankFilterChange}
+                                            input={<OutlinedInput label="Bancos (Multi)" />}
+                                            renderValue={(selected) => selected.length === 0 ? 'Todos' : selected.join(', ')}
+                                        >
+                                            <MenuItem value="Todas">
+                                                <ListItemText primary="-- Todos los bancos --" />
+                                            </MenuItem>
+                                            {BANK_OPTIONS.map((name) => (
+                                                <MenuItem key={name} value={name}>
+                                                    <Checkbox checked={bankFilter.indexOf(name) > -1} size="small"/>
+                                                    <ListItemText primary={name} />
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 </Grid>
+
+                                {/* FILTRO ESTADO RECLAMO (NUEVO) */}
+                                <Grid item xs={12} sm={6} md={2}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Estado Reclamo</InputLabel>
+                                        <Select
+                                            value={claimStatusFilter}
+                                            label="Estado Reclamo"
+                                            onChange={(e) => setClaimStatusFilter(e.target.value)}
+                                        >
+                                            {CLAIM_OPTIONS.map(opt => (
+                                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+
                                 <Grid item xs={12} sm={6} md={2}>
                                     <TextField
                                     fullWidth
@@ -659,17 +703,16 @@ function Dashboard({ session, onLogout }) {
                                     InputLabelProps={{ shrink: true }}
                                     />
                                 </Grid>
-                                <Grid item xs={12} sm={6} md={2}>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox 
-                                                checked={onlyClaimedFilter}
-                                                onChange={(e) => setOnlyClaimedFilter(e.target.checked)}
-                                                color="primary"
-                                            />
-                                        }
-                                        label="Solo Reclamados"
-                                        sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <TextField
+                                    fullWidth
+                                    placeholder="email@ejemplo.com"
+                                    label="Email Reclamador"
+                                    type="text"
+                                    variant="outlined"
+                                    value={adminUserFilter}
+                                    onChange={(e) => setAdminUserFilter(e.target.value)}
+                                    size="small"
                                     />
                                 </Grid>
                             </>
@@ -752,7 +795,7 @@ function Dashboard({ session, onLogout }) {
                                     <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }} align="right">Monto</TableCell>
                                 </>
                             ) : (
-                                // HEADERS TABLA MERCADO PAGO / MIXTA / OTROS BANCOS CLIENTE
+                                // HEADERS TABLA MERCADO PAGO / MIXTA
                                 <>
                                     {isAdmin && tabValue === 0 && (
                                         <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>

@@ -5,62 +5,106 @@ class TransferenciaService {
   // --- MÉTODOS UNIFICADOS (MP + MANUAL) ---
   
   /**
-   * Obtiene transferencias unificadas de ambas fuentes.
-   * Tab 0 (Pendientes): Trae MP no confirmadas y Manuales no confirmadas.
-   * Tab 1 (Historial): Trae MP confirmadas y Manuales confirmadas.
+   * Obtiene transferencias unificadas de ambas fuentes con filtros avanzados.
    */
   async getTransferencias(userId, isAdmin, filters = {}) {
-    const { monto, dni, fecha, history, emailReclamador, fechaDesde, fechaHasta, soloReclamados, confirmed } = filters || {};
+    const { 
+        monto, 
+        history, 
+        emailReclamador, 
+        fechaDesde, 
+        fechaHasta, 
+        confirmed,
+        // Nuevos filtros
+        bancos,         // String: "Mercado Pago,Santander,Macro" o vacío
+        estadoReclamo   // String: "all", "claimed", "unclaimed"
+    } = filters || {};
+
     const isHistoryMode = history === 'true';
-    const isConfirmedRequest = confirmed === 'true';
 
-    // 1. Preparar Query para Mercado Pago (MP)
-    let joinTypeMP = emailReclamador ? '!inner' : '';
-    let selectQueryMP = isAdmin ? `*, usuarios!fk_claimed_by${joinTypeMP}(email)` : '*';
-    let queryMP = supabase.from('transferencias').select(selectQueryMP);
+    // --- LOGICA DE BANCOS ---
+    // Determinamos qué tablas consultar basándonos en el filtro de bancos
+    const banksArray = bancos ? bancos.split(',') : [];
+    const hasBankFilter = banksArray.length > 0 && !banksArray.includes('Todas');
 
-    // 2. Preparar Query para Manuales (Otros Bancos)
-    // Asumimos que la relación en manuales es directa con 'user_id' -> usuarios
-    let joinTypeMan = emailReclamador ? '!inner' : '';
-    let selectQueryMan = isAdmin ? `*, usuarios${joinTypeMan}(email)` : '*';
-    let queryMan = supabase.from('transferencias_manuales').select(selectQueryMan);
+    // Mercado Pago se consulta si no hay filtro, si se selecciona "Todas", o si "Mercado Pago" está explícitamente seleccionado
+    const includeMP = !hasBankFilter || banksArray.includes('Mercado Pago');
 
-    // --- APLICAR FILTROS COMUNES ---
+    // Manuales se consultan si no hay filtro, "Todas", o si hay bancos manuales específicos seleccionados
+    const specificManualBanks = banksArray.filter(b => b !== 'Mercado Pago' && b !== 'Todas');
+    const includeManual = !hasBankFilter || specificManualBanks.length > 0;
+
+
+    // --- PREPARACIÓN DE QUERIES ---
     
-    // Filtro de Rol/Historial
-    if (isAdmin) {
-        // MP Logic
-        if (emailReclamador) queryMP = queryMP.ilike('usuarios.email', `%${emailReclamador}%`);
-        if (soloReclamados === 'true') queryMP = queryMP.not('claimed_by', 'is', null);
-        if (confirmed === 'true') queryMP = queryMP.eq('confirmed', true);
-        else if (confirmed === 'false') queryMP = queryMP.or('confirmed.eq.false,confirmed.is.null');
+    // 1. Query Mercado Pago
+    let queryMP = null;
+    if (includeMP) {
+        let joinTypeMP = emailReclamador ? '!inner' : '';
+        let selectQueryMP = isAdmin ? `*, usuarios!fk_claimed_by${joinTypeMP}(email)` : '*';
+        queryMP = supabase.from('transferencias').select(selectQueryMP);
+    }
 
-        // Manual Logic
-        if (emailReclamador) queryMan = queryMan.ilike('usuarios.email', `%${emailReclamador}%`);
-        if (soloReclamados === 'true') queryMan = queryMan.not('fecha_reclamo', 'is', null);
-        if (confirmed === 'true') queryMan = queryMan.eq('confirmed', true);
-        else if (confirmed === 'false') queryMan = queryMan.or('confirmed.eq.false,confirmed.is.null');
+    // 2. Query Manuales
+    let queryMan = null;
+    if (includeManual) {
+        let joinTypeMan = emailReclamador ? '!inner' : '';
+        let selectQueryMan = isAdmin ? `*, usuarios${joinTypeMan}(email)` : '*';
+        queryMan = supabase.from('transferencias_manuales').select(selectQueryMan);
+    }
+
+    // --- APLICAR FILTROS ---
+    
+    // Filtros Admin
+    if (isAdmin) {
+        // FILTRO DE ESTADO RECLAMO (Tri-estado)
+        if (queryMP) {
+            if (estadoReclamo === 'claimed') queryMP = queryMP.not('claimed_by', 'is', null);
+            else if (estadoReclamo === 'unclaimed') queryMP = queryMP.is('claimed_by', null);
+        }
+        if (queryMan) {
+            if (estadoReclamo === 'claimed') queryMan = queryMan.not('fecha_reclamo', 'is', null);
+            else if (estadoReclamo === 'unclaimed') queryMan = queryMan.is('fecha_reclamo', null);
+        }
+
+        // Filtro Email
+        if (emailReclamador) {
+            if (queryMP) queryMP = queryMP.ilike('usuarios.email', `%${emailReclamador}%`);
+            if (queryMan) queryMan = queryMan.ilike('usuarios.email', `%${emailReclamador}%`);
+        }
+
+        // Filtro Confirmado (Tab 0 vs Tab 1)
+        if (confirmed === 'true') {
+            if (queryMP) queryMP = queryMP.eq('confirmed', true);
+            if (queryMan) queryMan = queryMan.eq('confirmed', true);
+        } else if (confirmed === 'false') {
+            if (queryMP) queryMP = queryMP.or('confirmed.eq.false,confirmed.is.null');
+            if (queryMan) queryMan = queryMan.or('confirmed.eq.false,confirmed.is.null');
+        }
+
+        // Filtro Específico de Bancos Manuales
+        if (queryMan && specificManualBanks.length > 0) {
+            queryMan = queryMan.in('banco', specificManualBanks);
+        }
 
     } else if (isHistoryMode) {
         // User History Logic (CLIENTE - PESTAÑA HISTORIAL)
-        queryMP = queryMP.eq('claimed_by', userId);
+        if(queryMP) queryMP = queryMP.eq('claimed_by', userId);
         
         // MODIFICACIÓN: En el historial del cliente, SOLO mostramos las manuales YA RECLAMADAS
-        queryMan = queryMan.eq('user_id', userId).not('fecha_reclamo', 'is', null);
+        if(queryMan) queryMan = queryMan.eq('user_id', userId).not('fecha_reclamo', 'is', null);
     } else {
-        // User Search Logic (Solo MP disponibles)
-        queryMP = queryMP.is('claimed_by', null);
-        // Los usuarios normales NO buscan manuales, solo las ven en su historial o en "Otros Bancos"
-        queryMan = null; 
+        // User Search Logic
+        if(queryMP) queryMP = queryMP.is('claimed_by', null);
+        queryMan = null; // Usuarios no buscan manuales en búsqueda general
     }
 
-    // Filtros de búsqueda específicos
+    // Filtros comunes (Monto y Fechas)
     if (monto) {
-        queryMP = queryMP.eq('monto', parseFloat(monto));
+        if(queryMP) queryMP = queryMP.eq('monto', parseFloat(monto));
         if(queryMan) queryMan = queryMan.eq('monto', parseFloat(monto));
     }
     
-    // Fechas
     if (fechaDesde || fechaHasta) {
         const fromIso = fechaDesde ? new Date(fechaDesde).toISOString() : null;
         let toIso = null;
@@ -70,37 +114,42 @@ class TransferenciaService {
             toIso = d.toISOString();
         }
 
-        if (fromIso) queryMP = queryMP.gte('fecha_aprobado', fromIso);
-        if (toIso) queryMP = queryMP.lte('fecha_aprobado', toIso);
-
+        if (queryMP) {
+            if (fromIso) queryMP = queryMP.gte('fecha_aprobado', fromIso);
+            if (toIso) queryMP = queryMP.lte('fecha_aprobado', toIso);
+        }
         if (queryMan) {
             if (fromIso) queryMan = queryMan.gte('fecha_carga', fromIso);
             if (toIso) queryMan = queryMan.lte('fecha_carga', toIso);
         }
     }
 
-    // --- EJECUCIÓN PARALELA ---
-    const promises = [queryMP];
+    // --- EJECUCIÓN PARALELA SEGURA ---
+    const promises = [];
+    if (queryMP) promises.push(queryMP);
     if (queryMan) promises.push(queryMan);
+
+    if (promises.length === 0) return []; // Si los filtros excluyen todo
 
     const results = await Promise.all(promises);
     
-    const dataMP = results[0].data || [];
-    const errorMP = results[0].error;
-    if (errorMP) throw new Error('MP Error: ' + errorMP.message);
+    let combined = [];
 
-    let dataManual = [];
-    if (queryMan) {
-        const resMan = results[1];
-        if (resMan.error) throw new Error('Manual Error: ' + resMan.error.message);
-        dataManual = resMan.data || [];
+    // Procesar resultados MP (siempre es el primero si existe)
+    if (queryMP) {
+        const resMP = results.shift(); 
+        if (resMP.error) throw new Error('MP Error: ' + resMP.error.message);
+        combined = [...combined, ...(resMP.data || [])];
     }
 
-    // --- MERGE Y ORDENAMIENTO ---
-    // Combinamos ambos arrays
-    const combined = [...dataMP, ...dataManual];
+    // Procesar resultados Manual
+    if (queryMan) {
+        const resMan = results.shift();
+        if (resMan.error) throw new Error('Manual Error: ' + resMan.error.message);
+        combined = [...combined, ...(resMan.data || [])];
+    }
 
-    // Ordenamos descendente por fecha (usando fecha_aprobado o fecha_carga según corresponda)
+    // Ordenar descendente
     combined.sort((a, b) => {
         const dateA = new Date(a.fecha_aprobado || a.fecha_carga);
         const dateB = new Date(b.fecha_aprobado || b.fecha_carga);
@@ -115,8 +164,6 @@ class TransferenciaService {
     if (!ids || ids.length === 0) return [];
     
     // Intentamos confirmar en AMBAS tablas.
-    // SQL ignorará silenciosamente si el ID no existe en la tabla respectiva.
-    
     const p1 = supabase
         .from('transferencias')
         .update({ confirmed: true })
@@ -126,7 +173,7 @@ class TransferenciaService {
     const p2 = supabase
         .from('transferencias_manuales')
         .update({ confirmed: true })
-        .in('id_transaccion', ids) // Asumiendo que usamos id_transaccion como ID
+        .in('id_transaccion', ids)
         .select();
 
     const [resMP, resMan] = await Promise.all([p1, p2]);
@@ -134,7 +181,6 @@ class TransferenciaService {
     if (resMP.error) throw new Error(resMP.error.message);
     if (resMan.error) throw new Error(resMan.error.message);
 
-    // Retornamos combinados para feedback
     return [...(resMP.data || []), ...(resMan.data || [])];
   }
 
@@ -185,12 +231,11 @@ class TransferenciaService {
     return data;
   }
 
-  // MODIFICADO: Ahora filtra las confirmadas para que desaparezcan de Tab 2
+  // SOLO MOSTRAR LAS NO CONFIRMADAS EN LA PESTAÑA "OTROS BANCOS" (ADMIN)
   async getManualTransfers() {
     let query = supabase
         .from('transferencias_manuales')
         .select('*, usuarios(email)')
-        // SOLO MOSTRAR LAS NO CONFIRMADAS EN LA PESTAÑA "OTROS BANCOS" del Admin
         .or('confirmed.eq.false,confirmed.is.null') 
         .order('fecha_carga', { ascending: false });
 
@@ -207,7 +252,6 @@ class TransferenciaService {
         .eq('user_id', userId);
     
     // Si onlyUnclaimed es true, solo traemos las que NO han sido reclamadas (fecha_reclamo es null)
-    // Esto es para la nueva pestaña "Otros Bancos" del cliente.
     if (onlyUnclaimed) {
         query = query.is('fecha_reclamo', null);
     }
@@ -228,7 +272,7 @@ class TransferenciaService {
             monto: parseFloat(monto), 
             user_id: userId, 
             fecha_reclamo: null,
-            confirmed: false // Iniciamos como no confirmada
+            confirmed: false
         }])
         .select();
     if (error) throw error;
