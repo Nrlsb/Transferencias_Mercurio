@@ -15,7 +15,8 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
-import TouchAppIcon from '@mui/icons-material/TouchApp';
+import TouchAppIcon from '@mui/icons-material/TouchApp'; // Icono de "Dedo" clickeando
+import VisibilityIcon from '@mui/icons-material/Visibility'; // Opcional: Icono de Ojo
 
 const Transferencia = ({ 
     transferencia, 
@@ -93,7 +94,10 @@ const Transferencia = ({
   };
 
   const handlePopoverOpen = (event) => {
-    setAnchorEl(event.currentTarget);
+    // Solo abrir si hay historial
+    if(transferencia.clicks_count > 0) {
+        setAnchorEl(event.currentTarget);
+    }
   };
 
   const handlePopoverClose = () => {
@@ -118,8 +122,13 @@ const Transferencia = ({
                 },
                 body: JSON.stringify({ isManual })
             });
-            // No recargamos toda la tabla para no perder foco, pero el usuario verá el contador actualizado al recargar
-            if (onFeedback) onFeedback(`ID ${idPago} copiado (Click registrado)`, 'info');
+            
+            if (onFeedback) onFeedback(`ID ${idPago} copiado`, 'info');
+            
+            // CRÍTICO: Llamamos a onClaimSuccess para que el Dashboard recargue los datos
+            // y se actualice el contador de clicks visualmente.
+            if (onClaimSuccess) onClaimSuccess(); 
+
         } catch (e) {
             console.error("Error registrando click", e);
         }
@@ -241,16 +250,27 @@ const Transferencia = ({
                 </Box>
             </Tooltip>
 
-            {/* INDICADOR DE CLICKS (SOLO ADMIN) */}
-            {isAdmin && (transferencia.clicks_count > 0) && (
+            {/* INDICADOR DE CLICKS (SOLO ADMIN) - SIEMPRE VISIBLE */}
+            {isAdmin && (
                 <>
                     <Box 
                         onMouseEnter={handlePopoverOpen}
                         onMouseLeave={handlePopoverClose}
-                        sx={{ ml: 1, cursor: 'help', display: 'flex', alignItems: 'center' }}
+                        sx={{ 
+                            ml: 1, 
+                            cursor: 'help', 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            opacity: transferencia.clicks_count > 0 ? 1 : 0.3 // Semi-transparente si es 0
+                        }}
                     >
-                        <Badge badgeContent={transferencia.clicks_count} color="secondary" showZero>
-                            <TouchAppIcon fontSize="small" color="disabled" />
+                        <Badge 
+                            badgeContent={transferencia.clicks_count || 0} 
+                            color="secondary" 
+                            showZero
+                            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        >
+                            <TouchAppIcon fontSize="small" color="action" />
                         </Badge>
                     </Box>
                     <Popover
@@ -268,12 +288,14 @@ const Transferencia = ({
                             {transferencia.clicks_history && transferencia.clicks_history.length > 0 ? (
                                 transferencia.clicks_history.slice().reverse().map((log, idx) => (
                                     <Box key={idx} sx={{ mb: 1, borderBottom: '1px solid #eee', pb: 0.5 }}>
-                                        <Typography variant="caption" display="block" color="primary">{new Date(log.date).toLocaleString()}</Typography>
+                                        <Typography variant="caption" display="block" color="primary">
+                                            {new Date(log.date).toLocaleDateString()} {new Date(log.date).toLocaleTimeString()}
+                                        </Typography>
                                         <Typography variant="caption" display="block" color="text.secondary">{log.user}</Typography>
                                     </Box>
                                 ))
                             ) : (
-                                <Typography variant="caption">Sin detalles.</Typography>
+                                <Typography variant="caption">Sin historial.</Typography>
                             )}
                         </Box>
                     </Popover>
