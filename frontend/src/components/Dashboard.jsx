@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Transferencia from './Transferencia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { apiClient } from '../utils/apiClient'; // Usamos el nuevo cliente
 import {
   AppBar,
   Box,
@@ -25,7 +26,6 @@ import {
   Tabs,
   Tab,
   Chip,
-  FormControlLabel,
   Checkbox,
   Dialog,
   DialogTitle,
@@ -124,6 +124,9 @@ function Dashboard({ session, onLogout }) {
   }, 0);
 
   useEffect(() => {
+    // Si no hay sesión (token), no intentamos cargar nada (aunque el apiClient manejaría el error)
+    if (!session?.access_token) return;
+
     if (isAdmin) {
         if (tabValue === 0) {
             // Tab 0 (Gestión Global): Trae las pendientes MP + Manuales
@@ -158,18 +161,15 @@ function Dashboard({ session, onLogout }) {
     setSelectedIds([]); 
   };
 
-  // --- LLAMADAS A LA API ---
+  // --- LLAMADAS A LA API (Refactorizadas con apiClient) ---
 
   const fetchUsersList = async () => {
       if (usersList.length > 0) return;
       try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/users`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` },
-          });
-          if (response.ok) {
-              const data = await response.json();
-              setUsersList(data);
-          }
+          // Ya no necesitamos pasar headers manuales ni URL base
+          const response = await apiClient('/api/admin/users');
+          const data = await response.json();
+          setUsersList(data);
       } catch (e) {
           console.error("Error cargando usuarios", e);
       }
@@ -180,30 +180,13 @@ function Dashboard({ session, onLogout }) {
     setLoading(true);
     setError(null);
 
-    if (!session?.access_token) {
-        setError("No hay una sesión de usuario válida.");
-        setLoading(false);
-        return;
-    }
-
     try {
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/transferencias${queryParams}`;
-      const response = await fetch(apiUrl, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Error del servidor' }));
-        throw new Error(errorData.error || 'Error al obtener datos');
-      }
-      
+      const response = await apiClient(`/api/transferencias${queryParams}`);
       const data = await response.json();
       setTransferencias(data);
     } catch (e) {
       setError(e.message);
-      if (e.message.includes('No autorizado')) {
-          if (onLogout) onLogout();
-      }
+      // El logout se maneja automáticamente en apiClient si es 401/403
     } finally {
       setLoading(false);
     }
@@ -214,10 +197,7 @@ function Dashboard({ session, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/manual-transfers`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-      });
-      if (!response.ok) throw new Error('Error al obtener transferencias manuales');
+      const response = await apiClient('/api/admin/manual-transfers');
       const data = await response.json();
       setTransferencias(data);
     } catch (e) {
@@ -232,17 +212,9 @@ function Dashboard({ session, onLogout }) {
       setLoading(true);
       setError(null);
       try {
-          // AHORA: El backend ya unifica MP + Manuales cuando history=true.
-          // Solo necesitamos hacer una única llamada, evitando duplicados.
-          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias?history=true`, {
-             headers: { 'Authorization': `Bearer ${session.access_token}` } 
-          });
-
-          if (!res.ok) throw new Error("Error al cargar historial");
-          
-          const data = await res.json();
+          const response = await apiClient('/api/transferencias?history=true');
+          const data = await response.json();
           setTransferencias(data);
-
       } catch (e) {
           setError("Error al cargar historial completo.");
           console.error(e);
@@ -256,15 +228,9 @@ function Dashboard({ session, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/manual-transfers/me?unclaimed=true`, {
-           headers: { 'Authorization': `Bearer ${session.access_token}` } 
-        });
-
-        if (!res.ok) throw new Error("Error al cargar otros bancos");
-        
-        const data = await res.json();
+        const response = await apiClient('/api/manual-transfers/me?unclaimed=true');
+        const data = await response.json();
         setTransferencias(data);
-
     } catch (e) {
         setError("Error al cargar transferencias pendientes.");
         console.error(e);
@@ -373,17 +339,13 @@ function Dashboard({ session, onLogout }) {
   const handleSubmitManual = async () => {
       setLoadingManual(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/manual-transfers`, {
+        const response = await apiClient('/api/admin/manual-transfers', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
             body: JSON.stringify(manualData)
         });
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Error al crear transferencia manual");
+        // apiClient lanza error si !ok, así que no necesitamos checkear manualmente aquí
+        await response.json(); 
 
         handleFeedback('Transferencia manual creada exitosamente', 'success');
         setOpenManualModal(false);
@@ -437,18 +399,12 @@ function Dashboard({ session, onLogout }) {
       setOpenConfirmDialog(false);
       setIsConfirming(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/transferencias/confirm-batch`, {
+        const response = await apiClient('/api/transferencias/confirm-batch', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ ids: selectedIds })
         });
-
-        if (!response.ok) {
-            throw new Error("Error en confirmación masiva");
-        }
+        
+        await response.json();
 
         handleFeedback(`${selectedIds.length} transferencias confirmadas correctamente`, 'success');
         setSelectedIds([]);
