@@ -17,8 +17,16 @@ class TransferenciaService {
         confirmed,
         // Nuevos filtros
         bancos,         // String: "Mercado Pago,Santander,Macro" o vacío
-        estadoReclamo   // String: "all", "claimed", "unclaimed"
+        estadoReclamo,  // String: "all", "claimed", "unclaimed"
+        // Paginación
+        page,
+        limit
     } = filters || {};
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const from = (pageNum - 1) * limitNum;
+    const to = from + limitNum - 1;
 
     const isHistoryMode = history === 'true';
 
@@ -42,7 +50,7 @@ class TransferenciaService {
     if (includeMP) {
         let joinTypeMP = emailReclamador ? '!inner' : '';
         let selectQueryMP = isAdmin ? `*, usuarios!fk_claimed_by${joinTypeMP}(email)` : '*';
-        queryMP = supabase.from('transferencias').select(selectQueryMP);
+        queryMP = supabase.from('transferencias').select(selectQueryMP, { count: 'exact' }).range(from, to).limit(limitNum);
     }
 
     // 2. Query Manuales
@@ -50,7 +58,7 @@ class TransferenciaService {
     if (includeManual) {
         let joinTypeMan = emailReclamador ? '!inner' : '';
         let selectQueryMan = isAdmin ? `*, usuarios${joinTypeMan}(email)` : '*';
-        queryMan = supabase.from('transferencias_manuales').select(selectQueryMan);
+        queryMan = supabase.from('transferencias_manuales').select(selectQueryMan, { count: 'exact' }).range(from, to).limit(limitNum);
     }
 
     // --- APLICAR FILTROS ---
@@ -129,24 +137,27 @@ class TransferenciaService {
     if (queryMP) promises.push(queryMP);
     if (queryMan) promises.push(queryMan);
 
-    if (promises.length === 0) return []; // Si los filtros excluyen todo
+    if (promises.length === 0) return { data: [], totalCount: 0 }; // Si los filtros excluyen todo
 
     const results = await Promise.all(promises);
     
     let combined = [];
+    let totalCount = 0;
 
     // Procesar resultados MP (siempre es el primero si existe)
-    if (queryMP) {
+    if (includeMP) { // Usar includeMP/includeManual para saber si la promesa existía
         const resMP = results.shift(); 
         if (resMP.error) throw new Error('MP Error: ' + resMP.error.message);
         combined = [...combined, ...(resMP.data || [])];
+        totalCount += resMP.count || 0;
     }
 
     // Procesar resultados Manual
-    if (queryMan) {
+    if (includeManual) { // Usar includeMP/includeManual para saber si la promesa existía
         const resMan = results.shift();
         if (resMan.error) throw new Error('Manual Error: ' + resMan.error.message);
         combined = [...combined, ...(resMan.data || [])];
+        totalCount += resMan.count || 0;
     }
 
     // Ordenar descendente
@@ -156,7 +167,7 @@ class TransferenciaService {
         return dateB - dateA;
     });
 
-    return combined;
+    return { data: combined, totalCount: totalCount };
   }
 
   // --- CONFIRMACIÓN MASIVA UNIFICADA ---

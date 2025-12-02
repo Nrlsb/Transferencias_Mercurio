@@ -5,9 +5,9 @@ const getTransferencias = async (req, res) => {
   try {
     const userId = req.user.id;
     const isAdmin = req.user.is_admin === true;
-    const filters = req.query;
-    const resultados = await transferenciaService.getTransferencias(userId, isAdmin, filters);
-    res.status(200).json(resultados);
+    const { page, limit, ...filters } = req.query; // Extraer page y limit, el resto son filtros
+    const { data, totalCount } = await transferenciaService.getTransferencias(userId, isAdmin, { ...filters, page, limit });
+    res.status(200).json({ data, totalCount });
   } catch (error) {
     if (error.message.includes('DNI debe tener al menos')) return res.status(400).json({ error: error.message });
     console.error("❌ Error en getTransferencias:", error.message);
