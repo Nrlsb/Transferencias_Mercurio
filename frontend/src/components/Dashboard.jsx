@@ -138,7 +138,7 @@ function Dashboard({ session, onLogout }) {
   useEffect(() => {
     // Si no hay sesión (token), no intentamos cargar nada (aunque el apiClient manejaría el error)
     if (!session?.access_token) return;
-    
+
     const params = new URLSearchParams();
     if (isAdmin) {
       if (tabValue === 0) {
@@ -213,7 +213,7 @@ function Dashboard({ session, onLogout }) {
     }
   }, [isAdmin, tabValue]); // Dependencias para re-ejecutar el efecto
 
-    // Efecto para Notificaciones (Solo para no-admins)
+  // Efecto para Notificaciones (Solo para no-admins)
   useEffect(() => {
     if (isAdmin) return;
 
@@ -252,7 +252,7 @@ function Dashboard({ session, onLogout }) {
     setPage(0);
   };
 
-    // --- MANEJO DE NOTIFICACIONES ---
+  // --- MANEJO DE NOTIFICACIONES ---
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -646,7 +646,7 @@ function Dashboard({ session, onLogout }) {
 
   // --- RENDERIZADO DEL SIDEBAR ---
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'primary.main', color: 'white', overflowX: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: session?.user?.Area?.toLowerCase() === 'automotor' ? '#000000' : 'primary.main', color: 'white', overflowX: 'hidden' }}>
       {/* HEADER DEL SIDEBAR CON LOGO Y TOGGLE */}
       <Box sx={{
         p: 2,
@@ -904,28 +904,28 @@ function Dashboard({ session, onLogout }) {
                   ) : (
                     notificaciones.map((notif) => (
                       <MenuItem key={notif.id} onClick={handleMenuClose}>
-                        <ListItemText 
+                        <ListItemText
                           primary={`Nueva transferencia de ${notif.banco}`}
                           secondary={`Monto: $${parseFloat(notif.monto).toLocaleString('es-AR')}`}
                         />
                       </MenuItem>
                     ))
                   )}
-                   {notificaciones.length > 0 && (
-                     <Box>
-                        <Divider />
-                        <MenuItem onClick={handleClearNotifications}>
-                            <ListItemText primary="Limpiar notificaciones" sx={{ color: 'text.secondary', textAlign: 'center' }} />
-                        </MenuItem>
-                     </Box>
-                   )}
+                  {notificaciones.length > 0 && (
+                    <Box>
+                      <Divider />
+                      <MenuItem onClick={handleClearNotifications}>
+                        <ListItemText primary="Limpiar notificaciones" sx={{ color: 'text.secondary', textAlign: 'center' }} />
+                      </MenuItem>
+                    </Box>
+                  )}
                 </Menu>
               </>
             )}
-             {isAdmin && (
-                <IconButton>
-                    <NotificationsIcon color="action" />
-                </IconButton>
+            {isAdmin && (
+              <IconButton>
+                <NotificationsIcon color="action" />
+              </IconButton>
             )}
             <Avatar sx={{ bgcolor: 'secondary.main' }}>
               {session.user.email[0].toUpperCase()}
