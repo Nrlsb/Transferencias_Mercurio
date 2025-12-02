@@ -63,6 +63,9 @@ const closedDrawerWidth = 72; // Ancho cuando está cerrado (suficiente para ico
 function Dashboard({ session, onLogout }) {
   const [open, setOpen] = useState(false); // Sidebar cerrado por defecto (tipo hamburguesa)
   const [transferencias, setTransferencias] = useState([]);
+  const [totalTransfers, setTotalTransfers] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -128,14 +131,17 @@ function Dashboard({ session, onLogout }) {
   useEffect(() => {
     // Si no hay sesión (token), no intentamos cargar nada (aunque el apiClient manejaría el error)
     if (!session?.access_token) return;
-
+    
+    const params = new URLSearchParams();
     if (isAdmin) {
       if (tabValue === 0) {
         // Tab 0 (Gestión Global): Trae las pendientes MP + Manuales
-        fetchTransferencias('?confirmed=false');
+        params.append('confirmed', 'false');
+        fetchTransferencias(`?${params.toString()}`);
       } else if (tabValue === 1) {
         // Tab 1 (Confirmadas): Trae el historial unificado de confirmadas
-        fetchTransferencias('?confirmed=true');
+        params.append('confirmed', 'true');
+        fetchTransferencias(`?${params.toString()}`);
       } else if (tabValue === 2) {
         // Tab 2: Otros Bancos (Manuales NO confirmadas, vista específica)
         fetchManualTransfersAdmin();
@@ -154,7 +160,7 @@ function Dashboard({ session, onLogout }) {
         setFiltersApplied(false);
       }
     }
-  }, [tabValue, isAdmin]);
+  }, [tabValue, isAdmin, page, rowsPerPage]);
 
   useEffect(() => {
     // Suscripción Realtime solo para Admin en la pestaña "Gestión Global"
@@ -166,6 +172,7 @@ function Dashboard({ session, onLogout }) {
           { event: 'INSERT', schema: 'public', table: 'transferencias' },
           (payload) => {
             setTransferencias((prev) => [payload.new, ...prev]);
+            setTotalTransfers((prev) => prev + 1);
             handleFeedback('Nuevo pago de Mercado Pago recibido!', 'info');
           }
         )
@@ -187,6 +194,7 @@ function Dashboard({ session, onLogout }) {
             setTransferencias((prev) =>
               prev.filter(t => t.id_pago !== payload.old.id_pago)
             );
+            setTotalTransfers((prev) => prev - 1);
             handleFeedback('Pago de Mercado Pago eliminado!', 'info');
           }
         )
@@ -203,6 +211,16 @@ function Dashboard({ session, onLogout }) {
     setError(null);
     setTransferencias([]);
     setSelectedIds([]);
+    setPage(0);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   // --- LLAMADAS A LA API (Refactorizadas con apiClient) ---
@@ -223,11 +241,16 @@ function Dashboard({ session, onLogout }) {
   const fetchTransferencias = async (queryParams = '') => {
     setLoading(true);
     setError(null);
+    const params = new URLSearchParams(queryParams);
+    params.append('page', page + 1);
+    params.append('limit', rowsPerPage);
+
     try {
-      const response = await apiClient(`/api/transferencias${queryParams}`);
-      const data = await response.json();
+      const response = await apiClient(`/api/transferencias?${params.toString()}`);
+      const { data, totalCount } = await response.json();
       const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
       setTransferencias(transferenciasData);
+      setTotalTransfers(totalCount || 0);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -244,6 +267,7 @@ function Dashboard({ session, onLogout }) {
       const data = await response.json();
       const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
       setTransferencias(transferenciasData);
+      setTotalTransfers(transferenciasData.length);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -256,10 +280,15 @@ function Dashboard({ session, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient('/api/transferencias?history=true');
-      const data = await response.json();
+      const params = new URLSearchParams();
+      params.append('history', 'true');
+      params.append('page', page + 1);
+      params.append('limit', rowsPerPage);
+      const response = await apiClient(`/api/transferencias?${params.toString()}`);
+      const { data, totalCount } = await response.json();
       const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
       setTransferencias(transferenciasData);
+      setTotalTransfers(totalCount || 0);
     } catch (e) {
       setError("Error al cargar historial completo.");
     } finally {
@@ -276,6 +305,7 @@ function Dashboard({ session, onLogout }) {
       const data = await response.json();
       const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
       setTransferencias(transferenciasData);
+      setTotalTransfers(transferenciasData.length);
     } catch (e) {
       setError("Error al cargar transferencias pendientes.");
     } finally {
@@ -287,6 +317,7 @@ function Dashboard({ session, onLogout }) {
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
+    setPage(0);
 
     // Validación para usuario normal en Búsqueda
     if (!isAdmin && tabValue === 0) {
@@ -412,6 +443,7 @@ function Dashboard({ session, onLogout }) {
         const currentId = t.banco ? t.id_transaccion : t.id_pago;
         return currentId !== claimedId;
       }));
+      setTotalTransfers((prev) => prev - 1);
       // También quitamos de selectedIds si estaba
       setSelectedIds(prev => prev.filter(id => id !== claimedId));
     } else if (!isAdmin && tabValue === 2) {
@@ -465,6 +497,7 @@ function Dashboard({ session, onLogout }) {
         const currentId = t.banco ? t.id_transaccion : t.id_pago;
         return !selectedIds.includes(currentId);
       }));
+      setTotalTransfers((prev) => prev - selectedIds.length);
       setSelectedIds([]);
 
     } catch (error) {
@@ -890,6 +923,11 @@ function Dashboard({ session, onLogout }) {
             tabValue={tabValue}
             filtersApplied={filtersApplied}
             transferencias={transferencias}
+            totalTransfers={totalTransfers}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            handleChangePage={handleChangePage}
+            handleChangeRowsPerPage={handleChangeRowsPerPage}
             selectedIds={selectedIds}
             handleSelectAll={handleSelectAll}
             session={session}

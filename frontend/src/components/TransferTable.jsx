@@ -12,7 +12,8 @@ import {
   Checkbox,
   Typography,
   Chip,
-  Skeleton
+  Skeleton,
+  TablePagination
 } from '@mui/material';
 import Transferencia from './Transferencia'; // La tabla usa este componente para renderizar filas
 
@@ -53,6 +54,11 @@ const TransferTable = ({
   tabValue,
   filtersApplied,
   transferencias,
+  totalTransfers,
+  page,
+  rowsPerPage,
+  handleChangePage,
+  handleChangeRowsPerPage,
   selectedIds,
   handleSelectAll,
   session,
@@ -184,6 +190,15 @@ const TransferTable = ({
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[20, 50, 100]}
+        component="div"
+        count={totalTransfers}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
     </Paper>
   );
 };
