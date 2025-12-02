@@ -602,7 +602,9 @@ function Dashboard({ session, onLogout }) {
                       src={logoSrc}
                       alt="Logo"
                       sx={{
-                        height: 40,
+                        height: 'auto',
+                        maxHeight: 60,
+                        maxWidth: 180,
                         width: 'auto',
                         objectFit: 'contain'
                       }}
