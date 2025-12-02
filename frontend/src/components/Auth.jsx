@@ -128,9 +128,7 @@ export default function Auth({ onLoginSuccess }) {
                   control={<Checkbox value="remember" color="primary" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />}
                   label="Recordar contraseña"
                 />
-                <Link href="#" variant="body2">
-                  ¿Olvidaste tu contraseña?
-                </Link>
+
               </Box>
               
               <Button
