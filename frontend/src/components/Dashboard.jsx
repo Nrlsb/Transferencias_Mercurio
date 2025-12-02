@@ -159,14 +159,12 @@ function Dashboard({ session, onLogout }) {
   useEffect(() => {
     // Suscripción Realtime solo para Admin en la pestaña "Gestión Global"
     if (isAdmin && tabValue === 0) {
-      console.log("Subscribing to 'transferencias' for Realtime updates...");
       const subscription = supabase
         .channel('transferencias_admin_view') // Nombre de canal único
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'transferencias' },
           (payload) => {
-            console.log('Realtime INSERT received:', payload.new);
             setTransferencias((prev) => [payload.new, ...prev]);
             handleFeedback('Nuevo pago de Mercado Pago recibido!', 'info');
           }
@@ -175,7 +173,6 @@ function Dashboard({ session, onLogout }) {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'transferencias' },
           (payload) => {
-            console.log('Realtime UPDATE received:', payload.new);
             // Actualizar el elemento existente o añadir si es nuevo (aunque para UPDATE debería existir)
             setTransferencias((prev) =>
               prev.map(t => t.id_pago === payload.new.id_pago ? payload.new : t)
@@ -187,7 +184,6 @@ function Dashboard({ session, onLogout }) {
           'postgres_changes',
           { event: 'DELETE', schema: 'public', table: 'transferencias' },
           (payload) => {
-            console.log('Realtime DELETE received:', payload.old);
             setTransferencias((prev) =>
               prev.filter(t => t.id_pago !== payload.old.id_pago)
             );
@@ -197,7 +193,6 @@ function Dashboard({ session, onLogout }) {
         .subscribe();
 
       return () => {
-        console.log("Unsubscribing from 'transferencias' Realtime channel.");
         supabase.removeChannel(subscription);
       };
     }
