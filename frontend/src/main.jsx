@@ -9,7 +9,7 @@ const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#183050', // Azul Marino Oscuro (Brand)
+      main: '#1e3773', // Azul Marino Oscuro (Brand)
     },
     secondary: {
       main: '#007BFF', // Azul Vibrante (Acción)
