@@ -4,49 +4,112 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import App from './App.jsx'
 import './index.css'
 
-// Creamos un tema CLARO (Light Mode) para imitar la Imagen 2
+// Creamos el tema "Corporativo Moderno" para Mercurio
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2', // Azul estándar tipo "Agregar" de la imagen
+      main: '#183050', // Azul Marino Oscuro (Brand)
     },
     secondary: {
-      main: '#9c27b0',
+      main: '#007BFF', // Azul Vibrante (Acción)
     },
     background: {
-      default: '#f5f5f5', // Fondo gris muy suave para la app
-      paper: '#ffffff',   // Fondo blanco puro para las tablas/tarjetas
+      default: '#F4F6F9', // Gris azulado muy claro
+      paper: '#FFFFFF',   // Blanco puro
     },
     text: {
-      primary: '#2c3e50', // Un gris oscuro/azulado profesional
-      secondary: '#546e7a',
+      primary: '#183050', // Azul oscuro para texto principal
+      secondary: '#6c757d', // Gris neutro para secundario
+    },
+    success: {
+      main: '#8CC63F', // Verde Lima (Aprobado)
+      contrastText: '#fff',
+    },
+    warning: {
+      main: '#FFC20E', // Amarillo (Alerta)
+      contrastText: '#183050',
+    },
+    info: {
+      main: '#C6007E', // Magenta (Pendiente/Reclamo)
+      contrastText: '#fff',
     },
   },
   typography: {
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-    h1: { fontSize: '2rem', fontWeight: 600, color: '#0d47a1' },
-    h6: { fontWeight: 700, color: '#2c3e50' }, // Para títulos de secciones
+    fontFamily: "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
+    h1: { fontWeight: 700, color: '#183050' },
+    h5: { fontWeight: 600, color: '#183050' },
+    h6: { fontWeight: 600, color: '#183050' },
+    subtitle1: { fontWeight: 500 },
+    button: { fontWeight: 600, textTransform: 'none' },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none', // Botones con texto normal (No mayúsculas forzadas)
-          borderRadius: 20,      // Bordes redondeados tipo "píldora" como en la imagen
+          borderRadius: 8, // Bordes redondeados modernos (no píldora exagerada)
+          padding: '8px 24px',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
+          },
         },
+        containedPrimary: {
+          backgroundColor: '#007BFF', // Botones de acción principal en azul vibrante
+          '&:hover': {
+            backgroundColor: '#0056b3',
+          },
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0px 4px 20px rgba(0,0,0,0.05)', // Sombra suave
+          border: 'none',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+        rounded: {
+          borderRadius: 12,
+        }
       },
     },
     MuiTableCell: {
       styleOverrides: {
         head: {
-          fontWeight: 700,
-          color: '#909497', // Color grisáceo para encabezados de tabla
+          fontWeight: 600,
+          color: '#6c757d',
           textTransform: 'uppercase',
           fontSize: '0.75rem',
+          borderBottom: '1px solid #e9ecef',
+          backgroundColor: '#fff', // Cabecera blanca limpia
         },
         root: {
-          borderBottom: '1px solid #e0e0e0', // Bordes sutiles
+          borderBottom: '1px solid #f1f3f5', // Bordes muy sutiles
+          padding: '16px',
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          backgroundColor: '#fff',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+          borderRadius: 6,
         },
       },
     },

@@ -20,14 +20,21 @@ import {
   Paper,
   Alert,
   Snackbar,
-  Tabs,
-  Tab,
   Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  DialogContentText
+  DialogContentText,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+  IconButton,
+  Avatar
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
@@ -38,12 +45,16 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import MenuIcon from '@mui/icons-material/Menu';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+
+const drawerWidth = 260;
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // Tab 0: Pendientes MP (Admin) / Buscar (User)
   // Tab 1: Historial MP (Admin) / Historial Completo (User)
   // Tab 2: Otros Bancos (Admin) / Otros Bancos (User)
@@ -62,10 +73,10 @@ function Dashboard({ session, onLogout }) {
   const [adminUserFilter, setAdminUserFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
-  
+
   // NUEVOS FILTROS ADMIN
-  const [bankFilter, setBankFilter] = useState(['Todas']); 
-  const [claimStatusFilter, setClaimStatusFilter] = useState('all'); 
+  const [bankFilter, setBankFilter] = useState(['Todas']);
+  const [claimStatusFilter, setClaimStatusFilter] = useState('all');
 
   const [filtersApplied, setFiltersApplied] = useState(false);
 
@@ -73,10 +84,10 @@ function Dashboard({ session, onLogout }) {
   const [usersList, setUsersList] = useState([]);
   const [openManualModal, setOpenManualModal] = useState(false);
   const [manualData, setManualData] = useState({
-      id_transaccion: '',
-      banco: '',
-      monto: '',
-      userId: ''
+    id_transaccion: '',
+    banco: '',
+    monto: '',
+    userId: ''
   });
   const [loadingManual, setLoadingManual] = useState(false);
 
@@ -86,21 +97,21 @@ function Dashboard({ session, onLogout }) {
 
   // Cálculo del Total en tiempo real (Suma de montos visibles)
   const totalAmount = transferencias.reduce((acc, curr) => {
-      // Si es manual tiene 'monto', si es MP tiene 'datos_completos.transaction_amount'
-      const val = curr.banco ? curr.monto : (curr.datos_completos?.transaction_amount || curr.monto || 0);
-      return acc + parseFloat(val);
+    // Si es manual tiene 'monto', si es MP tiene 'datos_completos.transaction_amount'
+    const val = curr.banco ? curr.monto : (curr.datos_completos?.transaction_amount || curr.monto || 0);
+    return acc + parseFloat(val);
   }, 0);
 
   // Cálculo del Total SELECCIONADO
   const totalSelectedAmount = transferencias.reduce((acc, curr) => {
-      const isManual = !!curr.banco;
-      const currentId = isManual ? curr.id_transaccion : curr.id_pago;
+    const isManual = !!curr.banco;
+    const currentId = isManual ? curr.id_transaccion : curr.id_pago;
 
-      if (selectedIds.includes(currentId)) {
-          const val = isManual ? curr.monto : (curr.datos_completos?.transaction_amount || curr.monto || 0);
-          return acc + parseFloat(val);
-      }
-      return acc;
+    if (selectedIds.includes(currentId)) {
+      const val = isManual ? curr.monto : (curr.datos_completos?.transaction_amount || curr.monto || 0);
+      return acc + parseFloat(val);
+    }
+    return acc;
   }, 0);
 
   useEffect(() => {
@@ -108,31 +119,31 @@ function Dashboard({ session, onLogout }) {
     if (!session?.access_token) return;
 
     if (isAdmin) {
-        if (tabValue === 0) {
-            // Tab 0 (Gestión Global): Trae las pendientes MP + Manuales
-            fetchTransferencias('?confirmed=false');
-        } else if (tabValue === 1) {
-            // Tab 1 (Confirmadas): Trae el historial unificado de confirmadas
-            fetchTransferencias('?confirmed=true');
-        } else if (tabValue === 2) {
-            // Tab 2: Otros Bancos (Manuales NO confirmadas, vista específica)
-            fetchManualTransfersAdmin();
-            fetchUsersList(); // Cargar usuarios para el select
-        }
+      if (tabValue === 0) {
+        // Tab 0 (Gestión Global): Trae las pendientes MP + Manuales
+        fetchTransferencias('?confirmed=false');
+      } else if (tabValue === 1) {
+        // Tab 1 (Confirmadas): Trae el historial unificado de confirmadas
+        fetchTransferencias('?confirmed=true');
+      } else if (tabValue === 2) {
+        // Tab 2: Otros Bancos (Manuales NO confirmadas, vista específica)
+        fetchManualTransfersAdmin();
+        fetchUsersList(); // Cargar usuarios para el select
+      }
     } else {
-        if (tabValue === 1) {
-            // USUARIO: HISTORIAL COMPLETO (MP + MANUAL)
-            fetchFullUserHistory();
-        } else if (tabValue === 2) {
-            // USUARIO: OTROS BANCOS (NUEVO)
-            fetchUserUnclaimedManuals();
-        } else {
-            // USUARIO: BUSQUEDA (Solo MP no reclamadas)
-            setTransferencias([]);
-            setFiltersApplied(false);
-        }
+      if (tabValue === 1) {
+        // USUARIO: HISTORIAL COMPLETO (MP + MANUAL)
+        fetchFullUserHistory();
+      } else if (tabValue === 2) {
+        // USUARIO: OTROS BANCOS (NUEVO)
+        fetchUserUnclaimedManuals();
+      } else {
+        // USUARIO: BUSQUEDA (Solo MP no reclamadas)
+        setTransferencias([]);
+        setFiltersApplied(false);
+      }
     }
-  }, [tabValue, isAdmin]); 
+  }, [tabValue, isAdmin]);
 
   useEffect(() => {
     // Suscripción Realtime solo para Admin en la pestaña "Gestión Global"
@@ -155,8 +166,8 @@ function Dashboard({ session, onLogout }) {
           (payload) => {
             console.log('Realtime UPDATE received:', payload.new);
             // Actualizar el elemento existente o añadir si es nuevo (aunque para UPDATE debería existir)
-            setTransferencias((prev) => 
-                prev.map(t => t.id_pago === payload.new.id_pago ? payload.new : t)
+            setTransferencias((prev) =>
+              prev.map(t => t.id_pago === payload.new.id_pago ? payload.new : t)
             );
             handleFeedback('Pago de Mercado Pago actualizado!', 'info');
           }
@@ -166,8 +177,8 @@ function Dashboard({ session, onLogout }) {
           { event: 'DELETE', schema: 'public', table: 'transferencias' },
           (payload) => {
             console.log('Realtime DELETE received:', payload.old);
-            setTransferencias((prev) => 
-                prev.filter(t => t.id_pago !== payload.old.id_pago)
+            setTransferencias((prev) =>
+              prev.filter(t => t.id_pago !== payload.old.id_pago)
             );
             handleFeedback('Pago de Mercado Pago eliminado!', 'info');
           }
@@ -181,25 +192,25 @@ function Dashboard({ session, onLogout }) {
     }
   }, [isAdmin, tabValue]); // Dependencias para re-ejecutar el efecto
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (newValue) => {
     setTabValue(newValue);
     setError(null);
-    setTransferencias([]); 
-    setSelectedIds([]); 
+    setTransferencias([]);
+    setSelectedIds([]);
   };
 
   // --- LLAMADAS A LA API (Refactorizadas con apiClient) ---
 
   const fetchUsersList = async () => {
-      if (usersList.length > 0) return;
-      try {
-          // Ya no necesitamos pasar headers manuales ni URL base
-          const response = await apiClient('/api/admin/users');
-          const data = await response.json();
-          setUsersList(Array.isArray(data) ? data : []);
-      } catch (e) {
-          console.error("Error cargando usuarios", e);
-      }
+    if (usersList.length > 0) return;
+    try {
+      // Ya no necesitamos pasar headers manuales ni URL base
+      const response = await apiClient('/api/admin/users');
+      const data = await response.json();
+      setUsersList(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error cargando usuarios", e);
+    }
   };
 
   // 1. Fetch Genérico (Mercado Pago + Manuales Unificadas)
@@ -236,18 +247,18 @@ function Dashboard({ session, onLogout }) {
 
   // 3. Fetch Usuario Historial Combinado
   const fetchFullUserHistory = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-          const response = await apiClient('/api/transferencias?history=true');
-          const data = await response.json();
-          const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
-          setTransferencias(transferenciasData);
-      } catch (e) {
-          setError("Error al cargar historial completo.");
-      } finally {
-          setLoading(false);
-      }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient('/api/transferencias?history=true');
+      const data = await response.json();
+      const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+      setTransferencias(transferenciasData);
+    } catch (e) {
+      setError("Error al cargar historial completo.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 4. NUEVO: Fetch Usuario "Otros Bancos" (Manuales NO reclamadas)
@@ -255,72 +266,72 @@ function Dashboard({ session, onLogout }) {
     setLoading(true);
     setError(null);
     try {
-        const response = await apiClient('/api/manual-transfers/me?unclaimed=true');
-        const data = await response.json();
-        const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
-        setTransferencias(transferenciasData);
+      const response = await apiClient('/api/manual-transfers/me?unclaimed=true');
+      const data = await response.json();
+      const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+      setTransferencias(transferenciasData);
     } catch (e) {
-        setError("Error al cargar transferencias pendientes.");
+      setError("Error al cargar transferencias pendientes.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   // --- MANEJO DE FORMULARIOS ---
 
   const handleSearchSubmit = (e) => {
-    if(e) e.preventDefault();
-    
+    if (e) e.preventDefault();
+
     // Validación para usuario normal en Búsqueda
     if (!isAdmin && tabValue === 0) {
-        const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
-        if(activeFilters < 2) {
-            setError("Por favor, ingrese Monto y Fecha para realizar la búsqueda.");
-            return;
-        }
-        setFiltersApplied(true);
+      const activeFilters = [montoFilter, fechaFilter].filter(Boolean).length;
+      if (activeFilters < 2) {
+        setError("Por favor, ingrese Monto y Fecha para realizar la búsqueda.");
+        return;
+      }
+      setFiltersApplied(true);
     }
 
     // Si es Admin en Tab 2 (Manual), recargamos la lista manual
-    if(isAdmin && tabValue === 2) {
-        fetchManualTransfersAdmin();
-        return;
+    if (isAdmin && tabValue === 2) {
+      fetchManualTransfersAdmin();
+      return;
     }
     // Si es Usuario en Tab 2 (Otros Bancos), recargamos
-    if(!isAdmin && tabValue === 2) {
-        fetchUserUnclaimedManuals();
-        return;
+    if (!isAdmin && tabValue === 2) {
+      fetchUserUnclaimedManuals();
+      return;
     }
 
     const params = new URLSearchParams();
-    
+
     if (montoFilter) params.append('monto', montoFilter);
 
     if (isAdmin) {
-        if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
-        if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
-        if (dateToFilter) params.append('fechaHasta', dateToFilter);
-        
-        // NUEVOS FILTROS
-        if (claimStatusFilter !== 'all') params.append('estadoReclamo', claimStatusFilter);
-        
-        // Enviamos el array unido por comas.
-        if (bankFilter.length > 0) params.append('bancos', bankFilter.join(','));
-        
-        if (tabValue === 1) {
-            params.append('confirmed', 'true');
-        } else {
-            params.append('confirmed', 'false');
-        }
+      if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
+      if (dateFromFilter) params.append('fechaDesde', dateFromFilter);
+      if (dateToFilter) params.append('fechaHasta', dateToFilter);
+
+      // NUEVOS FILTROS
+      if (claimStatusFilter !== 'all') params.append('estadoReclamo', claimStatusFilter);
+
+      // Enviamos el array unido por comas.
+      if (bankFilter.length > 0) params.append('bancos', bankFilter.join(','));
+
+      if (tabValue === 1) {
+        params.append('confirmed', 'true');
+      } else {
+        params.append('confirmed', 'false');
+      }
     } else {
-        if (fechaFilter) {
-            params.set('fechaDesde', fechaFilter);
-            params.set('fechaHasta', fechaFilter);
-        }
+      if (fechaFilter) {
+        params.set('fechaDesde', fechaFilter);
+        params.set('fechaHasta', fechaFilter);
+      }
     }
-    
+
     if (tabValue === 1 && !isAdmin) {
-        params.append('history', 'true');
+      params.append('history', 'true');
     }
 
     fetchTransferencias(`?${params.toString()}`);
@@ -333,57 +344,57 @@ function Dashboard({ session, onLogout }) {
 
     // Si la nueva selección incluye "Todas"
     if (val.includes('Todas')) {
-        // Caso 1: Solo está "Todas" (seleccion inicial o re-seleccion unica)
-        if (val.length === 1) {
-            setBankFilter(val);
+      // Caso 1: Solo está "Todas" (seleccion inicial o re-seleccion unica)
+      if (val.length === 1) {
+        setBankFilter(val);
+      } else {
+        // Caso 2: Había otros bancos y el usuario hizo click en "Todas"
+        // (El ultimo elemento agregado es "Todas")
+        if (val[val.length - 1] === 'Todas') {
+          setBankFilter(['Todas']);
         } else {
-            // Caso 2: Había otros bancos y el usuario hizo click en "Todas"
-            // (El ultimo elemento agregado es "Todas")
-            if (val[val.length - 1] === 'Todas') {
-                setBankFilter(['Todas']);
-            } else {
-                // Caso 3: Estaba "Todas" seleccionado y el usuario clickeó un banco específico
-                // (Quitamos "Todas" y dejamos los específicos)
-                setBankFilter(val.filter(b => b !== 'Todas'));
-            }
+          // Caso 3: Estaba "Todas" seleccionado y el usuario clickeó un banco específico
+          // (Quitamos "Todas" y dejamos los específicos)
+          setBankFilter(val.filter(b => b !== 'Todas'));
         }
+      }
     } else {
-        // "Todas" no está en la selección
-        if (val.length === 0) {
-            // Si deselecciona todo, volver a "Todas" por defecto
-            setBankFilter(['Todas']);
-        } else {
-            // Selección normal de bancos específicos
-            setBankFilter(val);
-        }
+      // "Todas" no está en la selección
+      if (val.length === 0) {
+        // Si deselecciona todo, volver a "Todas" por defecto
+        setBankFilter(['Todas']);
+      } else {
+        // Selección normal de bancos específicos
+        setBankFilter(val);
+      }
     }
   };
 
   const handleManualChange = (e) => {
-      setManualData({ ...manualData, [e.target.name]: e.target.value });
+    setManualData({ ...manualData, [e.target.name]: e.target.value });
   };
 
   const handleSubmitManual = async () => {
-      setLoadingManual(true);
-      try {
-        const response = await apiClient('/api/admin/manual-transfers', {
-            method: 'POST',
-            body: JSON.stringify(manualData)
-        });
+    setLoadingManual(true);
+    try {
+      const response = await apiClient('/api/admin/manual-transfers', {
+        method: 'POST',
+        body: JSON.stringify(manualData)
+      });
 
-        // apiClient lanza error si !ok, así que no necesitamos checkear manualmente aquí
-        await response.json(); 
+      // apiClient lanza error si !ok, así que no necesitamos checkear manualmente aquí
+      await response.json();
 
-        handleFeedback('Transferencia manual creada exitosamente', 'success');
-        setOpenManualModal(false);
-        setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' }); // Reset
-        fetchManualTransfersAdmin(); // Recargar tabla
+      handleFeedback('Transferencia manual creada exitosamente', 'success');
+      setOpenManualModal(false);
+      setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' }); // Reset
+      fetchManualTransfersAdmin(); // Recargar tabla
 
-      } catch (error) {
-        handleFeedback(error.message, 'error');
-      } finally {
-        setLoadingManual(false);
-      }
+    } catch (error) {
+      handleFeedback(error.message, 'error');
+    } finally {
+      setLoadingManual(false);
+    }
   };
 
   // --- ACCIONES EN TABLA ---
@@ -391,77 +402,77 @@ function Dashboard({ session, onLogout }) {
   const handleTransferenciaClaimed = (claimedId) => {
     // Si es Admin en la Tab 0 (Gestión Global), actualizamos el estado localmente
     if (isAdmin && tabValue === 0) {
-        setTransferencias(prev => prev.filter(t => {
-            const currentId = t.banco ? t.id_transaccion : t.id_pago;
-            return currentId !== claimedId;
-        }));
-        // También quitamos de selectedIds si estaba
-        setSelectedIds(prev => prev.filter(id => id !== claimedId));
+      setTransferencias(prev => prev.filter(t => {
+        const currentId = t.banco ? t.id_transaccion : t.id_pago;
+        return currentId !== claimedId;
+      }));
+      // También quitamos de selectedIds si estaba
+      setSelectedIds(prev => prev.filter(id => id !== claimedId));
     } else if (!isAdmin && tabValue === 2) {
-        // Si estamos en "Otros Bancos" (usuario), recargamos esa vista
-        fetchUserUnclaimedManuals();
+      // Si estamos en "Otros Bancos" (usuario), recargamos esa vista
+      fetchUserUnclaimedManuals();
     } else {
-        // En cualquier otro caso, o si no se hizo una eliminación local, recargamos la data con los filtros actuales
-        handleSearchSubmit(null);
+      // En cualquier otro caso, o si no se hizo una eliminación local, recargamos la data con los filtros actuales
+      handleSearchSubmit(null);
     }
   };
 
   const handleToggleSelect = (id) => {
-    setSelectedIds(prev => 
-        prev.includes(id) 
-        ? prev.filter(item => item !== id) 
+    setSelectedIds(prev =>
+      prev.includes(id)
+        ? prev.filter(item => item !== id)
         : [...prev, id]
     );
   };
 
   const handleSelectAll = (e) => {
-      if (e.target.checked) {
-          // Seleccionamos TODOS (Manuales y MP)
-          const allIds = transferencias.map(t => t.banco ? t.id_transaccion : t.id_pago);
-          setSelectedIds(allIds);
-      } else {
-          setSelectedIds([]);
-      }
+    if (e.target.checked) {
+      // Seleccionamos TODOS (Manuales y MP)
+      const allIds = transferencias.map(t => t.banco ? t.id_transaccion : t.id_pago);
+      setSelectedIds(allIds);
+    } else {
+      setSelectedIds([]);
+    }
   };
 
   // --- CAMBIO: Solo abre el modal ---
   const handleBatchConfirm = () => {
-      if (selectedIds.length === 0) return;
-      setOpenConfirmDialog(true);
+    if (selectedIds.length === 0) return;
+    setOpenConfirmDialog(true);
   };
 
   // --- NUEVA FUNCIÓN: Ejecuta la acción ---
   const executeBatchConfirm = async () => {
-      setOpenConfirmDialog(false);
-      setIsConfirming(true);
-      try {
-        const response = await apiClient('/api/transferencias/confirm-batch', {
-            method: 'POST',
-            body: JSON.stringify({ ids: selectedIds })
-        });
-        
-        await response.json();
+    setOpenConfirmDialog(false);
+    setIsConfirming(true);
+    try {
+      const response = await apiClient('/api/transferencias/confirm-batch', {
+        method: 'POST',
+        body: JSON.stringify({ ids: selectedIds })
+      });
 
-        handleFeedback(`${selectedIds.length} transferencias confirmadas correctamente`, 'success');
-        // Eliminar las transferencias confirmadas del estado local
-        setTransferencias(prev => prev.filter(t => {
-            const currentId = t.banco ? t.id_transaccion : t.id_pago;
-            return !selectedIds.includes(currentId);
-        }));
-        setSelectedIds([]);
+      await response.json();
 
-      } catch (error) {
-        handleFeedback(error.message, 'error');
-      } finally {
-        setIsConfirming(false);
-      }
+      handleFeedback(`${selectedIds.length} transferencias confirmadas correctamente`, 'success');
+      // Eliminar las transferencias confirmadas del estado local
+      setTransferencias(prev => prev.filter(t => {
+        const currentId = t.banco ? t.id_transaccion : t.id_pago;
+        return !selectedIds.includes(currentId);
+      }));
+      setSelectedIds([]);
+
+    } catch (error) {
+      handleFeedback(error.message, 'error');
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   // Función completa para exportar PDF
   const handleExportPDF = () => {
     if (!transferencias || transferencias.length === 0) {
-        handleFeedback('No hay datos para exportar', 'warning');
-        return;
+      handleFeedback('No hay datos para exportar', 'warning');
+      return;
     }
 
     const doc = new jsPDF();
@@ -474,7 +485,7 @@ function Dashboard({ session, onLogout }) {
     const fechaReporte = new Date().toLocaleString();
     doc.text(`Generado el: ${fechaReporte}`, 14, 28);
     doc.text(`Generado por: ${session?.user?.email}`, 14, 33);
-    
+
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
     doc.text(`Total del reporte: $${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`, 14, 40);
@@ -484,60 +495,60 @@ function Dashboard({ session, onLogout }) {
 
     // Lógica para definir columnas
     if (isAdmin && tabValue === 2) {
-        // CASO: Admin Tablas Manuales
-        tableColumn = ["ID Transaccion", "Banco", "Fecha Carga", "Cliente Asignado", "Monto"];
-        tableRows = transferencias.map(t => {
-             const fechaFormatted = new Date(t.fecha_carga).toLocaleDateString() + ' ' + new Date(t.fecha_carga).toLocaleTimeString();
-             const montoFormatted = `$${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-             return [
-                 t.id_transaccion,
-                 t.banco,
-                 fechaFormatted,
-                 t.usuarios?.email || 'N/A',
-                 montoFormatted
-             ];
-        });
+      // CASO: Admin Tablas Manuales
+      tableColumn = ["ID Transaccion", "Banco", "Fecha Carga", "Cliente Asignado", "Monto"];
+      tableRows = transferencias.map(t => {
+        const fechaFormatted = new Date(t.fecha_carga).toLocaleDateString() + ' ' + new Date(t.fecha_carga).toLocaleTimeString();
+        const montoFormatted = `$${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+        return [
+          t.id_transaccion,
+          t.banco,
+          fechaFormatted,
+          t.usuarios?.email || 'N/A',
+          montoFormatted
+        ];
+      });
     } else {
-        // CASO: Mercado Pago (Admin/User) O Mixto (User Historial)
-        tableColumn = ["ID / Ref", "Fecha", "Monto", "Estado", "Origen"];
-        
-        tableRows = transferencias.map(t => {
-            const isManual = !!t.banco;
-            
-            // Unificar campos
-            const idRef = isManual ? t.id_transaccion : t.id_pago;
-            
-            const rawDate = isManual ? t.fecha_carga : t.datos_completos?.date_approved;
-            const fechaFormatted = rawDate 
-                ? new Date(rawDate).toLocaleDateString() + ' ' + new Date(rawDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                : 'N/A';
+      // CASO: Mercado Pago (Admin/User) O Mixto (User Historial)
+      tableColumn = ["ID / Ref", "Fecha", "Monto", "Estado", "Origen"];
 
-            const rawMonto = isManual ? t.monto : (t.datos_completos?.transaction_amount || 0);
-            const montoFormatted = `$${parseFloat(rawMonto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-            
-            let estado = t.estado;
-            if (estado === 'approved') estado = 'Aprobado';
-            else if (estado === 'pending') estado = 'Pendiente';
-            
-            const origen = isManual ? `Manual (${t.banco})` : 'Mercado Pago';
-            
-            return [
-                idRef,
-                fechaFormatted,
-                montoFormatted,
-                estado,
-                origen
-            ];
-        });
+      tableRows = transferencias.map(t => {
+        const isManual = !!t.banco;
+
+        // Unificar campos
+        const idRef = isManual ? t.id_transaccion : t.id_pago;
+
+        const rawDate = isManual ? t.fecha_carga : t.datos_completos?.date_approved;
+        const fechaFormatted = rawDate
+          ? new Date(rawDate).toLocaleDateString() + ' ' + new Date(rawDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'N/A';
+
+        const rawMonto = isManual ? t.monto : (t.datos_completos?.transaction_amount || 0);
+        const montoFormatted = `$${parseFloat(rawMonto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+
+        let estado = t.estado;
+        if (estado === 'approved') estado = 'Aprobado';
+        else if (estado === 'pending') estado = 'Pendiente';
+
+        const origen = isManual ? `Manual (${t.banco})` : 'Mercado Pago';
+
+        return [
+          idRef,
+          fechaFormatted,
+          montoFormatted,
+          estado,
+          origen
+        ];
+      });
     }
 
     autoTable(doc, {
-        head: [tableColumn],
-        body: tableRows,
-        startY: 50,
-        theme: 'grid',
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [25, 118, 210] },
+      head: [tableColumn],
+      body: tableRows,
+      startY: 50,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [24, 48, 80] }, // Azul Mercurio
     });
 
     doc.save(`Mercurio_Reporte_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -550,124 +561,195 @@ function Dashboard({ session, onLogout }) {
 
   const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
+  // --- RENDERIZADO DEL SIDEBAR ---
+  const drawerContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'primary.main', color: 'white' }}>
+      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+        {/* Placeholder para logo */}
+        <Typography variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
+          Mercurio
+        </Typography>
+      </Box>
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+
+      <List sx={{ flexGrow: 1, px: 2, mt: 2 }}>
+        {isAdmin ? (
+          <>
+            <ListItemButton
+              selected={tabValue === 0}
+              onClick={() => handleTabChange(0)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><ListAltIcon /></ListItemIcon>
+              <ListItemText primary="Gestión Global" />
+            </ListItemButton>
+            <ListItemButton
+              selected={tabValue === 1}
+              onClick={() => handleTabChange(1)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><CheckCircleIcon /></ListItemIcon>
+              <ListItemText primary="Historial" />
+            </ListItemButton>
+            <ListItemButton
+              selected={tabValue === 2}
+              onClick={() => handleTabChange(2)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><AccountBalanceIcon /></ListItemIcon>
+              <ListItemText primary="Otros Bancos" />
+            </ListItemButton>
+          </>
+        ) : (
+          <>
+            <ListItemButton
+              selected={tabValue === 0}
+              onClick={() => handleTabChange(0)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><SearchIcon /></ListItemIcon>
+              <ListItemText primary="Buscar Pagos" />
+            </ListItemButton>
+            <ListItemButton
+              selected={tabValue === 1}
+              onClick={() => handleTabChange(1)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><HistoryIcon /></ListItemIcon>
+              <ListItemText primary="Mi Historial" />
+            </ListItemButton>
+            <ListItemButton
+              selected={tabValue === 2}
+              onClick={() => handleTabChange(2)}
+              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+            >
+              <ListItemIcon sx={{ color: 'white' }}><AccountBalanceIcon /></ListItemIcon>
+              <ListItemText primary="Otros Bancos" />
+            </ListItemButton>
+          </>
+        )}
+      </List>
+
+      <Box sx={{ p: 2 }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          color="inherit"
+          startIcon={<LogoutIcon />}
+          onClick={onLogout}
+          sx={{ borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.05)' } }}
+        >
+          Cerrar Sesión
+        </Button>
+      </Box>
+    </Box>
+  );
+
   return (
-    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', width: '100%' }}>
-      <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: '#fff' }}>
-        <Container maxWidth="xl">
-            <Toolbar disableGutters>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: '#1976d2', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                Mercurio Dashboard
-                {isAdmin && <Chip icon={<AdminPanelSettingsIcon />} label="ADMIN MODE" color="error" size="small" />}
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+
+      {/* SIDEBAR (DRAWER) */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box', border: 'none' },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
+      {/* MAIN CONTENT */}
+      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
+
+        {/* HEADER (APPBAR SIMPLIFICADO) */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box>
+            <Typography variant="h5" fontWeight="bold" color="text.primary">
+              {isAdmin
+                ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Gestión Global' : 'Historial de Pagos'))
+                : (tabValue === 0 ? 'Búsqueda de Pagos' : (tabValue === 2 ? 'Mis Reclamos Pendientes' : 'Mis Transferencias'))}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {session.user.email}
-                </Typography>
-                <Button 
-                color="primary" 
-                variant="outlined"
-                onClick={onLogout} 
-                startIcon={<LogoutIcon />}
-                size="small"
-                sx={{ borderRadius: 20 }}
-                >
-                Salir
-                </Button>
-            </Box>
-            </Toolbar>
-        </Container>
-      </AppBar>
-
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        
-        {/* PESTAÑAS (TABS) DINÁMICAS */}
-        <Paper elevation={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', bgcolor: 'transparent' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="dashboard tabs">
-                {isAdmin ? (
-                    [
-                        <Tab key="admin-all" icon={<ListAltIcon />} iconPosition="start" label="Gestión Global" />,
-                        <Tab key="admin-confirmed" icon={<CheckCircleIcon />} iconPosition="start" label="Historial" />,
-                        <Tab key="admin-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
-                    ]
-                ) : (
-                    [
-                        <Tab key="user-search" icon={<SearchIcon />} iconPosition="start" label="Buscar Pagos" />,
-                        <Tab key="user-history" icon={<HistoryIcon />} iconPosition="start" label="Mi Historial" />,
-                        <Tab key="user-manual" icon={<AccountBalanceIcon />} iconPosition="start" label="Otros Bancos" />
-                    ]
-                )}
-            </Tabs>
-        </Paper>
-
-        {/* BARRA SUPERIOR CON TOTALES Y BOTÓN DE ACCIÓN */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                {isAdmin 
-                    ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Pendientes' : 'Confirmadas MP')) 
-                    : (tabValue === 0 ? 'Resultados de Búsqueda' : (tabValue === 2 ? 'Otros Bancos (Pendientes de Reclamo)' : 'Mis Transferencias'))}
+            <Typography variant="body2" color="text.secondary">
+              Bienvenido, {session.user.email}
             </Typography>
+          </Box>
 
-            {/* GRUPO DE BOTONES Y TOTALES A LA DERECHA */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                
-                {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
-                {isAdmin && tabValue === 2 && (
-                    <Button 
-                        variant="contained" 
-                        color="secondary" 
-                        startIcon={<AddCircleOutlineIcon />}
-                        onClick={() => setOpenManualModal(true)}
-                        sx={{ borderRadius: 20 }}
-                    >
-                        Cargar Transferencia
-                    </Button>
-                )}
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <IconButton>
+              <NotificationsIcon color="action" />
+            </IconButton>
+            <Avatar sx={{ bgcolor: 'secondary.main' }}>
+              {session.user.email[0].toUpperCase()}
+            </Avatar>
+          </Box>
+        </Box>
 
-                <StatsCards 
-                    isAdmin={isAdmin}
-                    selectedIds={selectedIds}
-                    totalSelectedAmount={totalSelectedAmount}
-                    totalAmount={totalAmount}
-                />
-            </Box>
+        {/* CONTENIDO PRINCIPAL (TARJETAS Y TABLAS) */}
+
+        {/* BARRA DE ACCIONES Y KPI */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
+          {isAdmin && tabValue === 2 && (
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<AddCircleOutlineIcon />}
+              onClick={() => setOpenManualModal(true)}
+            >
+              Cargar Transferencia
+            </Button>
+          )}
+
+          <StatsCards
+            isAdmin={isAdmin}
+            selectedIds={selectedIds}
+            totalSelectedAmount={totalSelectedAmount}
+            totalAmount={totalAmount}
+          />
         </Box>
 
         {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
         {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
-            <Alert severity="info" sx={{ mb: 2, alignItems: 'center' }}
-                action={
-                    <Button 
-                        color="success" 
-                        variant="contained" 
-                        size="small"
-                        onClick={handleBatchConfirm}
-                        disabled={isConfirming}
-                        startIcon={<DoneAllIcon />}
-                    >
-                        {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
-                    </Button>
-                }
-            >
-                Has seleccionado <strong>{selectedIds.length}</strong> transferencias. Haz clic en confirmar para archivarlas.
-            </Alert>
+          <Alert severity="info" sx={{ mb: 2, alignItems: 'center', borderRadius: 2 }}
+            action={
+              <Button
+                color="success"
+                variant="contained"
+                size="small"
+                onClick={handleBatchConfirm}
+                disabled={isConfirming}
+                startIcon={<DoneAllIcon />}
+              >
+                {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
+              </Button>
+            }
+          >
+            Has seleccionado <strong>{selectedIds.length}</strong> transferencias. Haz clic en confirmar para archivarlas.
+          </Alert>
         )}
 
-        <TransferFilters
-            isAdmin={isAdmin}
-            tabValue={tabValue}
-            montoFilter={montoFilter} setMontoFilter={setMontoFilter}
-            fechaFilter={fechaFilter} setFechaFilter={setFechaFilter}
-            adminUserFilter={adminUserFilter} setAdminUserFilter={setAdminUserFilter}
-            dateFromFilter={dateFromFilter} setDateFromFilter={setDateFromFilter}
-            dateToFilter={dateToFilter} setDateToFilter={setDateToFilter}
-            bankFilter={bankFilter} handleBankFilterChange={handleBankFilterChange}
-            claimStatusFilter={claimStatusFilter} setClaimStatusFilter={setClaimStatusFilter}
-            handleSearchSubmit={handleSearchSubmit}
-            handleExportPDF={handleExportPDF}
-            transferenciasCount={transferencias.length}
-        />
+        {/* FILTROS Y TABLA */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Paper sx={{ p: 3 }}>
+            <TransferFilters
+              isAdmin={isAdmin}
+              tabValue={tabValue}
+              montoFilter={montoFilter} setMontoFilter={setMontoFilter}
+              fechaFilter={fechaFilter} setFechaFilter={setFechaFilter}
+              adminUserFilter={adminUserFilter} setAdminUserFilter={setAdminUserFilter}
+              dateFromFilter={dateFromFilter} setDateFromFilter={setDateFromFilter}
+              dateToFilter={dateToFilter} setDateToFilter={setDateToFilter}
+              bankFilter={bankFilter} handleBankFilterChange={handleBankFilterChange}
+              claimStatusFilter={claimStatusFilter} setClaimStatusFilter={setClaimStatusFilter}
+              handleSearchSubmit={handleSearchSubmit}
+              handleExportPDF={handleExportPDF}
+              transferenciasCount={transferencias.length}
+            />
+          </Paper>
 
-        <TransferTable
+          <TransferTable
             loading={loading}
             error={error}
             isAdmin={isAdmin}
@@ -680,10 +762,11 @@ function Dashboard({ session, onLogout }) {
             handleTransferenciaClaimed={handleTransferenciaClaimed}
             handleFeedback={handleFeedback}
             handleToggleSelect={handleToggleSelect}
-        />
+          />
+        </Box>
 
-      </Container>
-      
+      </Box>
+
       <ManualTransferModal
         open={openManualModal}
         onClose={() => setOpenManualModal(false)}
@@ -694,7 +777,7 @@ function Dashboard({ session, onLogout }) {
         usersList={usersList}
       />
 
-      {/* MODAL DE CONFIRMACIÓN MASIVA (NUEVO) */}
+      {/* MODAL DE CONFIRMACIÓN MASIVA */}
       <Dialog
         open={openConfirmDialog}
         onClose={() => setOpenConfirmDialog(false)}
@@ -711,7 +794,7 @@ function Dashboard({ session, onLogout }) {
             El monto total seleccionado es:
             <br />
             <Typography component="span" variant="h5" color="success.main" fontWeight="bold">
-                ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Typography>
             <br /><br />
             Estas transferencias desaparecerán de la lista de pendientes y pasarán al historial. ¿Deseas continuar?

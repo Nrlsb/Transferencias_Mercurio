@@ -76,13 +76,13 @@ const TransferTable = ({
   );
 
   const renderInitialUserState = () => (
-     <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
-        <Typography color="text.secondary">
-            Utiliza los filtros de arriba para encontrar nuevas transferencias.
-        </Typography>
+    <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+      <Typography color="text.secondary">
+        Utiliza los filtros de arriba para encontrar nuevas transferencias.
+      </Typography>
     </Box>
   );
-  
+
   if (loading) {
     return (
       <Box sx={{ my: 4 }}>
@@ -94,12 +94,12 @@ const TransferTable = ({
   if (error) {
     return <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>;
   }
-  
+
   // Condición para mostrar la tabla (o el estado vacío si corresponde)
   const showTable = isAdmin || (tabValue === 0 && filtersApplied) || tabValue === 1 || tabValue === 2;
 
   if (!showTable) {
-      return renderInitialUserState();
+    return renderInitialUserState();
   }
 
   return (
@@ -111,17 +111,17 @@ const TransferTable = ({
               {isAdmin && tabValue === 2 ? (
                 // Cabeceras para Admin en la tabla de Otros Bancos
                 <>
-                  <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>ID Transacción</TableCell>
-                  <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Banco</TableCell>
-                  <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Fecha Carga</TableCell>
-                  <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Cliente Asignado</TableCell>
-                  <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }} align="right">Monto</TableCell>
+                  <TableCell>ID Transacción</TableCell>
+                  <TableCell>Banco</TableCell>
+                  <TableCell>Fecha Carga</TableCell>
+                  <TableCell>Cliente Asignado</TableCell>
+                  <TableCell align="right">Monto</TableCell>
                 </>
               ) : (
                 // Cabeceras para todas las demás vistas
                 <>
                   {isAdmin && tabValue === 0 && (
-                    <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableCell padding="checkbox">
                       <Checkbox
                         indeterminate={selectedIds.length > 0 && selectedIds.length < transferencias.length}
                         checked={transferencias.length > 0 && selectedIds.length === transferencias.length}
@@ -130,19 +130,19 @@ const TransferTable = ({
                       />
                     </TableCell>
                   )}
-                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID / Ref</TableCell>
-                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción / Banco</TableCell>
-                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
+                  <TableCell>ID / Ref</TableCell>
+                  <TableCell>Descripción / Banco</TableCell>
+                  <TableCell>Fecha</TableCell>
+                  <TableCell>Estado</TableCell>
                   {!isAdmin && tabValue === 1 && (
-                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha Reclamo</TableCell>
+                    <TableCell>Fecha Reclamo</TableCell>
                   )}
                   {isAdmin && (
-                    <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
+                    <TableCell sx={{ color: 'info.main' }}>
                       Reclamado Por
                     </TableCell>
                   )}
-                  <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
+                  <TableCell align="right">Monto (ARS)</TableCell>
                 </>
               )}
             </TableRow>
@@ -157,7 +157,7 @@ const TransferTable = ({
                 return (
                   <TableRow key={currentId || idx} hover>
                     <TableCell>{t.id_transaccion}</TableCell>
-                    <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small"/></TableCell>
+                    <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small" /></TableCell>
                     <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
                     <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>

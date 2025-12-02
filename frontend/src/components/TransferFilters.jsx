@@ -52,7 +52,7 @@ const TransferFilters = ({
       </Typography>
       <Box component="form" onSubmit={handleSearchSubmit}>
         <Grid container spacing={2} alignItems="center">
-          
+
           {!isAdmin ? (
             // Filtros para Usuario
             <>
@@ -101,7 +101,7 @@ const TransferFilters = ({
                     </MenuItem>
                     {BANK_OPTIONS.map((name) => (
                       <MenuItem key={name} value={name}>
-                        <Checkbox checked={bankFilter.indexOf(name) > -1} size="small"/>
+                        <Checkbox checked={bankFilter.indexOf(name) > -1} size="small" />
                         <ListItemText primary={name} />
                       </MenuItem>
                     ))}
@@ -171,12 +171,11 @@ const TransferFilters = ({
                 disableElevation
                 fullWidth
                 startIcon={<FilterListIcon />}
-                sx={{ borderRadius: 20, height: '40px' }}
               >
                 {isAdmin ? 'Filtrar' : 'Buscar'}
               </Button>
             </Grid>
-            
+
             {isAdmin && (
               <Grid item xs={6}>
                 <Button
@@ -186,7 +185,6 @@ const TransferFilters = ({
                   onClick={handleExportPDF}
                   disabled={transferenciasCount === 0}
                   startIcon={<PictureAsPdfIcon />}
-                  sx={{ borderRadius: 20, height: '40px' }}
                 >
                   PDF
                 </Button>

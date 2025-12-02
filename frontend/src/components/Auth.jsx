@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Button, 
-  Container, 
-  TextField, 
-  Typography, 
-  Card, 
-  CardContent, 
+import {
+  Box,
+  Button,
+  Container,
+  TextField,
+  Typography,
+  Card,
+  CardContent,
   Alert,
   FormControlLabel,
   Checkbox,
@@ -70,26 +70,27 @@ export default function Auth({ onLoginSuccess }) {
   };
 
   return (
-    <Box 
-      sx={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
-        p: 2 
+        bgcolor: 'primary.main', // Fondo Azul Marino
+        p: 2,
+        backgroundImage: 'linear-gradient(135deg, #183050 0%, #102035 100%)' // Sutil gradiente
       }}
     >
       <Container component="main" maxWidth="xs">
-        <Card sx={{ width: '100%', boxShadow: 4, borderRadius: 2 }}>
+        <Card sx={{ width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', borderRadius: 4 }}>
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 4 }}>
-            <Box sx={{ mb: 2, textAlign: 'center' }}>
-                <Typography component="h1" variant="h5" fontWeight="bold" color="primary" gutterBottom>
-                Mercurio Transferencias
-                </Typography>
-                <Typography component="p" variant="body2" color="text.secondary">
-                Inicia sesión para continuar
-                </Typography>
+            <Box sx={{ mb: 4, textAlign: 'center' }}>
+              <Typography component="h1" variant="h4" fontWeight="800" color="primary" gutterBottom sx={{ letterSpacing: '-0.5px' }}>
+                Mercurio
+              </Typography>
+              <Typography component="h2" variant="subtitle1" color="text.secondary" fontWeight="500">
+                Gestión de Transferencias
+              </Typography>
             </Box>
 
             {message.text && (
@@ -130,7 +131,7 @@ export default function Auth({ onLoginSuccess }) {
                 />
 
               </Box>
-              
+
               <Button
                 type="submit"
                 fullWidth
@@ -139,7 +140,7 @@ export default function Auth({ onLoginSuccess }) {
                 sx={{ mt: 3, mb: 2, borderRadius: 2 }}
                 disabled={loading}
               >
-                {loading ? 'Cargando...' : 'Iniciar Sesión'}
+                {loading ? 'Iniciando...' : 'Ingresar al Sistema'}
               </Button>
 
             </Box>
