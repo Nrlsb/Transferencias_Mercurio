@@ -95,7 +95,7 @@ export default function Auth({ onLoginSuccess }) {
             {message.text && (
               <Alert severity={message.type === 'error' ? 'error' : 'success'}>
                 {message.text}
-              </Aler
+              </Alert>
             )}
 
             <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
