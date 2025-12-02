@@ -34,11 +34,25 @@ app.use(limiter);
 
 // --- MIDDLEWARES BASE ---
 
-// Configuración CORS más segura (Reemplaza '*' con tu dominio real en producción)
+// Configuración CORS más segura
+const allowedOrigins = [
+  process.env.FRONTEND_URL, // Tu URL de Vercel (definida en .env)
+  'http://localhost:3000',     // O el puerto que uses para desarrollo local
+  'https://transferencias-mercurio.vercel.app'
+].filter(Boolean); // Filtra valores no definidos
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*', // Define esto en tu .env
+  origin: function (origin, callback) {
+    // Permite peticiones sin origin (como Postman) y las de la lista
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS: El origen de la petición no está permitido.'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Permite el envío de cookies y cabeceras de autorización
 }));
 
 app.use(express.json({ limit: '10kb' })); // Limita el tamaño del body para prevenir ataques de payload grande
