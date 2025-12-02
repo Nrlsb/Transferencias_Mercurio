@@ -48,9 +48,15 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import StorefrontIcon from '@mui/icons-material/Storefront'; // Icono para el logo placeholder
+
 const drawerWidth = 260;
+const closedDrawerWidth = 72; // Ancho cuando está cerrado (suficiente para iconos)
 
 function Dashboard({ session, onLogout }) {
+  const [open, setOpen] = useState(false); // Sidebar cerrado por defecto (tipo hamburguesa)
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -563,41 +569,90 @@ function Dashboard({ session, onLogout }) {
 
   // --- RENDERIZADO DEL SIDEBAR ---
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'primary.main', color: 'white' }}>
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        {/* Placeholder para logo */}
-        <Typography variant="h5" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
-          Mercurio
-        </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'primary.main', color: 'white', overflowX: 'hidden' }}>
+      {/* HEADER DEL SIDEBAR CON LOGO Y TOGGLE */}
+      <Box sx={{
+        p: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: open ? 'space-between' : 'center',
+        minHeight: 64,
+      }}>
+        {open ? (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <StorefrontIcon sx={{ fontSize: 30, color: '#FFC20E' }} /> {/* Amarillo Brand */}
+              <Box>
+                <Typography variant="h6" fontWeight="800" sx={{ lineHeight: 1, letterSpacing: '-0.5px' }}>
+                  Mercurio
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                  Pinturerías
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton onClick={() => setOpen(false)} sx={{ color: 'white' }}>
+              <ChevronLeftIcon />
+            </IconButton>
+          </>
+        ) : (
+          <IconButton onClick={() => setOpen(true)} sx={{ color: 'white' }}>
+            <MenuIcon />
+          </IconButton>
+        )}
       </Box>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
-      <List sx={{ flexGrow: 1, px: 2, mt: 2 }}>
+      <List sx={{ flexGrow: 1, px: 1, mt: 2 }}>
         {isAdmin ? (
           <>
             <ListItemButton
               selected={tabValue === 0}
               onClick={() => handleTabChange(0)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><ListAltIcon /></ListItemIcon>
-              <ListItemText primary="Gestión Global" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <ListAltIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Gestión Global" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 1}
               onClick={() => handleTabChange(1)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><CheckCircleIcon /></ListItemIcon>
-              <ListItemText primary="Historial" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <CheckCircleIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Historial" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 2}
               onClick={() => handleTabChange(2)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><AccountBalanceIcon /></ListItemIcon>
-              <ListItemText primary="Otros Bancos" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <AccountBalanceIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Otros Bancos" />}
             </ListItemButton>
           </>
         ) : (
@@ -605,42 +660,72 @@ function Dashboard({ session, onLogout }) {
             <ListItemButton
               selected={tabValue === 0}
               onClick={() => handleTabChange(0)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><SearchIcon /></ListItemIcon>
-              <ListItemText primary="Buscar Pagos" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <SearchIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Buscar Pagos" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 1}
               onClick={() => handleTabChange(1)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><HistoryIcon /></ListItemIcon>
-              <ListItemText primary="Mi Historial" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <HistoryIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Mi Historial" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 2}
               onClick={() => handleTabChange(2)}
-              sx={{ borderRadius: 2, mb: 1, '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+                '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
+              }}
             >
-              <ListItemIcon sx={{ color: 'white' }}><AccountBalanceIcon /></ListItemIcon>
-              <ListItemText primary="Otros Bancos" />
+              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+                <AccountBalanceIcon />
+              </ListItemIcon>
+              {open && <ListItemText primary="Otros Bancos" />}
             </ListItemButton>
           </>
         )}
       </List>
 
-      <Box sx={{ p: 2 }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          color="inherit"
-          startIcon={<LogoutIcon />}
-          onClick={onLogout}
-          sx={{ borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.05)' } }}
-        >
-          Cerrar Sesión
-        </Button>
+      <Box sx={{ p: 2, display: 'flex', justifyContent: open ? 'flex-start' : 'center' }}>
+        {open ? (
+          <Button
+            fullWidth
+            variant="outlined"
+            color="inherit"
+            startIcon={<LogoutIcon />}
+            onClick={onLogout}
+            sx={{ borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.05)' } }}
+          >
+            Cerrar Sesión
+          </Button>
+        ) : (
+          <IconButton onClick={onLogout} sx={{ color: 'white' }} title="Cerrar Sesión">
+            <LogoutIcon />
+          </IconButton>
+        )}
       </Box>
     </Box>
   );
@@ -651,17 +736,32 @@ function Dashboard({ session, onLogout }) {
       {/* SIDEBAR (DRAWER) */}
       <Drawer
         variant="permanent"
+        open={open}
         sx={{
-          width: drawerWidth,
+          width: open ? drawerWidth : closedDrawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box', border: 'none' },
+          whiteSpace: 'nowrap',
+          boxSizing: 'border-box',
+          transition: theme => theme.transitions.create('width', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
+          [`& .MuiDrawer-paper`]: {
+            width: open ? drawerWidth : closedDrawerWidth,
+            overflowX: 'hidden',
+            transition: theme => theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            border: 'none'
+          },
         }}
       >
         {drawerContent}
       </Drawer>
 
       {/* MAIN CONTENT */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${open ? drawerWidth : closedDrawerWidth}px)` }, transition: 'width 0.3s' }}>
 
         {/* HEADER (APPBAR SIMPLIFICADO) */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -688,50 +788,10 @@ function Dashboard({ session, onLogout }) {
 
         {/* CONTENIDO PRINCIPAL (TARJETAS Y TABLAS) */}
 
-        {/* BARRA DE ACCIONES Y KPI */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-          {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
-          {isAdmin && tabValue === 2 && (
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<AddCircleOutlineIcon />}
-              onClick={() => setOpenManualModal(true)}
-            >
-              Cargar Transferencia
-            </Button>
-          )}
-
-          <StatsCards
-            isAdmin={isAdmin}
-            selectedIds={selectedIds}
-            totalSelectedAmount={totalSelectedAmount}
-            totalAmount={totalAmount}
-          />
-        </Box>
-
-        {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
-        {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
-          <Alert severity="info" sx={{ mb: 2, alignItems: 'center', borderRadius: 2 }}
-            action={
-              <Button
-                color="success"
-                variant="contained"
-                size="small"
-                onClick={handleBatchConfirm}
-                disabled={isConfirming}
-                startIcon={<DoneAllIcon />}
-              >
-                {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
-              </Button>
-            }
-          >
-            Has seleccionado <strong>{selectedIds.length}</strong> transferencias. Haz clic en confirmar para archivarlas.
-          </Alert>
-        )}
-
-        {/* FILTROS Y TABLA */}
+        {/* REORDENAMIENTO: FILTROS PRIMERO */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+          {/* 1. FILTROS */}
           <Paper sx={{ p: 3 }}>
             <TransferFilters
               isAdmin={isAdmin}
@@ -749,6 +809,49 @@ function Dashboard({ session, onLogout }) {
             />
           </Paper>
 
+          {/* 2. TOTALES Y ACCIONES (AHORA ABAJO DE FILTROS) */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
+            {isAdmin && tabValue === 2 && (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<AddCircleOutlineIcon />}
+                onClick={() => setOpenManualModal(true)}
+              >
+                Cargar Transferencia
+              </Button>
+            )}
+
+            <StatsCards
+              isAdmin={isAdmin}
+              selectedIds={selectedIds}
+              totalSelectedAmount={totalSelectedAmount}
+              totalAmount={totalAmount}
+            />
+          </Box>
+
+          {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
+          {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
+            <Alert severity="info" sx={{ alignItems: 'center', borderRadius: 2 }}
+              action={
+                <Button
+                  color="success"
+                  variant="contained"
+                  size="small"
+                  onClick={handleBatchConfirm}
+                  disabled={isConfirming}
+                  startIcon={<DoneAllIcon />}
+                >
+                  {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
+                </Button>
+              }
+            >
+              Has seleccionado <strong>{selectedIds.length}</strong> transferencias. Haz clic en confirmar para archivarlas.
+            </Alert>
+          )}
+
+          {/* 3. TABLA */}
           <TransferTable
             loading={loading}
             error={error}
