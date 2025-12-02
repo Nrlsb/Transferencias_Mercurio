@@ -37,22 +37,23 @@ const register = async (req, res) => {
 
     // 4. Generar Token (Incluimos is_admin en el payload)
     const token = jwt.sign(
-      { 
-        id: data.id, 
-        email: data.email, 
-        is_admin: data.is_admin || false 
-      }, 
-      config.jwtSecret, 
+      {
+        id: data.id,
+        email: data.email,
+        is_admin: data.is_admin || false
+      },
+      config.jwtSecret,
       { expiresIn: '24h' }
     );
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Usuario registrado exitosamente',
       token,
-      user: { 
-        id: data.id, 
-        email: data.email, 
-        is_admin: data.is_admin || false 
+      user: {
+        id: data.id,
+        email: data.email,
+        is_admin: data.is_admin || false,
+        Area: data.Area || data.area
       }
     });
 
@@ -85,22 +86,23 @@ const login = async (req, res) => {
 
     // 3. Generar Token (Incluimos is_admin en el payload)
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
-        is_admin: user.is_admin || false 
-      }, 
-      config.jwtSecret, 
+      {
+        id: user.id,
+        email: user.email,
+        is_admin: user.is_admin || false
+      },
+      config.jwtSecret,
       { expiresIn: '24h' }
     );
 
     res.json({
       message: 'Login exitoso',
       token,
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        is_admin: user.is_admin || false 
+      user: {
+        id: user.id,
+        email: user.email,
+        is_admin: user.is_admin || false,
+        Area: user.Area || user.area
       }
     });
 

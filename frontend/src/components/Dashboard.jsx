@@ -52,6 +52,11 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import StorefrontIcon from '@mui/icons-material/Storefront'; // Icono para el logo placeholder
 
+import espintLogo from '../assets/espintBlanco.jpg';
+import mercurioLogo from '../assets/mercurioBlanco.jpg';
+import casaPintorLogo from '../assets/casaDelPintorBlanco.jpg';
+import automotorLogo from '../assets/automotorBlanco.png';
+
 const drawerWidth = 260;
 const closedDrawerWidth = 72; // Ancho cuando está cerrado (suficiente para iconos)
 
@@ -581,15 +586,44 @@ function Dashboard({ session, onLogout }) {
         {open ? (
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <StorefrontIcon sx={{ fontSize: 30, color: '#FFC20E' }} /> {/* Amarillo Brand */}
-              <Box>
-                <Typography variant="h6" fontWeight="800" sx={{ lineHeight: 1, letterSpacing: '-0.5px' }}>
-                  Mercurio
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Pinturerías
-                </Typography>
-              </Box>
+              {(() => {
+                const area = session?.user?.Area?.toLowerCase();
+                let logoSrc = null;
+
+                if (area === 'espint') logoSrc = espintLogo;
+                else if (area === 'hogar') logoSrc = mercurioLogo;
+                else if (area === 'pintor') logoSrc = casaPintorLogo;
+                else if (area === 'automotor') logoSrc = automotorLogo;
+
+                if (logoSrc) {
+                  return (
+                    <Box
+                      component="img"
+                      src={logoSrc}
+                      alt="Logo"
+                      sx={{
+                        height: 40,
+                        width: 'auto',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  );
+                }
+
+                return (
+                  <>
+                    <StorefrontIcon sx={{ fontSize: 30, color: '#FFC20E' }} /> {/* Amarillo Brand */}
+                    <Box>
+                      <Typography variant="h6" fontWeight="800" sx={{ lineHeight: 1, letterSpacing: '-0.5px' }}>
+                        Mercurio
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                        Pinturerías
+                      </Typography>
+                    </Box>
+                  </>
+                );
+              })()}
             </Box>
             <IconButton onClick={() => setOpen(false)} sx={{ color: 'white' }}>
               <ChevronLeftIcon />
