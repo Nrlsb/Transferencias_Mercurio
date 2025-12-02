@@ -52,9 +52,9 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import StorefrontIcon from '@mui/icons-material/Storefront'; // Icono para el logo placeholder
 
-import espintLogo from '../assets/espintBlanco.jpg';
-import mercurioLogo from '../assets/mercurioBlanco.jpg';
-import casaPintorLogo from '../assets/casaDelPintorBlanco.jpg';
+import espintLogo from '../assets/espintBlanco.png';
+import mercurioLogo from '../assets/mercurioBlanco.png';
+import casaPintorLogo from '../assets/casaDelPintorBlanco.png';
 import automotorLogo from '../assets/automotorBlanco.png';
 
 const drawerWidth = 260;
