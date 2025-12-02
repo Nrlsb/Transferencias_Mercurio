@@ -104,7 +104,7 @@ const TransferTable = ({
 
   return (
     <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-      <TableContainer sx={{ maxHeight: 600 }}>
+      <TableContainer>
         <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
           <TableHead>
             <TableRow>
