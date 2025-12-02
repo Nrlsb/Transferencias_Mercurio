@@ -34,7 +34,10 @@ import {
   ListItemText,
   Divider,
   IconButton,
-  Avatar
+  Avatar,
+  Badge,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
@@ -68,6 +71,10 @@ function Dashboard({ session, onLogout }) {
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Notificaciones
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [anchorEl, setAnchorEl] = useState(null);
 
   // Tab 0: Pendientes MP (Admin) / Buscar (User)
   // Tab 1: Historial MP (Admin) / Historial Completo (User)
@@ -206,6 +213,28 @@ function Dashboard({ session, onLogout }) {
     }
   }, [isAdmin, tabValue]); // Dependencias para re-ejecutar el efecto
 
+    // Efecto para Notificaciones (Solo para no-admins)
+  useEffect(() => {
+    if (isAdmin) return;
+
+    const fetchNotificaciones = async () => {
+      try {
+        const response = await apiClient('/api/notificaciones');
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setNotificaciones(data);
+        }
+      } catch (e) {
+        console.error("Error fetching notifications:", e.message);
+      }
+    };
+
+    fetchNotificaciones(); // Cargar al inicio
+    const intervalId = setInterval(fetchNotificaciones, 30000); // Polling cada 30 segundos
+
+    return () => clearInterval(intervalId); // Limpiar intervalo al desmontar
+  }, [isAdmin]);
+
   const handleTabChange = (newValue) => {
     setTabValue(newValue);
     setError(null);
@@ -222,6 +251,21 @@ function Dashboard({ session, onLogout }) {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
+    // --- MANEJO DE NOTIFICACIONES ---
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleClearNotifications = () => {
+    setNotificaciones([]);
+    handleMenuClose();
+  };
+
 
   // --- LLAMADAS A LA API (Refactorizadas con apiClient) ---
 
@@ -841,9 +885,48 @@ function Dashboard({ session, onLogout }) {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <IconButton>
-              <NotificationsIcon color="action" />
-            </IconButton>
+            {!isAdmin && (
+              <>
+                <IconButton onClick={handleMenuOpen}>
+                  <Badge badgeContent={notificaciones.length} color="error">
+                    <NotificationsIcon color="action" />
+                  </Badge>
+                </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                  {notificaciones.length === 0 ? (
+                    <MenuItem disabled>No tienes notificaciones nuevas</MenuItem>
+                  ) : (
+                    notificaciones.map((notif) => (
+                      <MenuItem key={notif.id} onClick={handleMenuClose}>
+                        <ListItemText 
+                          primary={`Nueva transferencia de ${notif.banco}`}
+                          secondary={`Monto: $${parseFloat(notif.monto).toLocaleString('es-AR')}`}
+                        />
+                      </MenuItem>
+                    ))
+                  )}
+                   {notificaciones.length > 0 && (
+                     <Box>
+                        <Divider />
+                        <MenuItem onClick={handleClearNotifications}>
+                            <ListItemText primary="Limpiar notificaciones" sx={{ color: 'text.secondary', textAlign: 'center' }} />
+                        </MenuItem>
+                     </Box>
+                   )}
+                </Menu>
+              </>
+            )}
+             {isAdmin && (
+                <IconButton>
+                    <NotificationsIcon color="action" />
+                </IconButton>
+            )}
             <Avatar sx={{ bgcolor: 'secondary.main' }}>
               {session.user.email[0].toUpperCase()}
             </Avatar>

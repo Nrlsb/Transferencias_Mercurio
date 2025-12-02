@@ -10,6 +10,7 @@ dotenv.config();
 // 2. Importar rutas
 const transferenciaRoutes = require('./src/routes/transferenciaRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const notificacionRoutes = require('./src/routes/notificacionRoutes');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- RUTAS ---
 app.use('/api/auth', authRoutes); // Nuevas rutas de auth
+app.use('/api/notificaciones', notificacionRoutes); // Nuevas rutas de notificaciones
 app.use('/', transferenciaRoutes);
 
 // Manejo de errores global (Evita filtrar stack traces al cliente)
