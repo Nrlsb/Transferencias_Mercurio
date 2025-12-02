@@ -164,8 +164,7 @@ const Transferencia = ({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error al procesar");
 
-      if (onFeedback) onFeedback('¡Copiado y Marcado como Reclamado!', 'success');
-      if (onClaimSuccess) onClaimSuccess(); 
+      if (onClaimSuccess) onClaimSuccess(idPago); 
 
     } catch (error) {
       if (onFeedback) onFeedback(error.message, 'error');

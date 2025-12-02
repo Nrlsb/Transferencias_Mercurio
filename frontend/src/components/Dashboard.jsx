@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient'; // Importar el cliente Supabase
 import Transferencia from './Transferencia';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -153,6 +154,53 @@ function Dashboard({ session, onLogout }) {
         }
     }
   }, [tabValue, isAdmin]); 
+
+  useEffect(() => {
+    // Suscripción Realtime solo para Admin en la pestaña "Gestión Global"
+    if (isAdmin && tabValue === 0) {
+      console.log("Subscribing to 'transferencias' for Realtime updates...");
+      const subscription = supabase
+        .channel('transferencias_admin_view') // Nombre de canal único
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'transferencias' },
+          (payload) => {
+            console.log('Realtime INSERT received:', payload.new);
+            setTransferencias((prev) => [payload.new, ...prev]);
+            handleFeedback('Nuevo pago de Mercado Pago recibido!', 'info');
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'transferencias' },
+          (payload) => {
+            console.log('Realtime UPDATE received:', payload.new);
+            // Actualizar el elemento existente o añadir si es nuevo (aunque para UPDATE debería existir)
+            setTransferencias((prev) => 
+                prev.map(t => t.id_pago === payload.new.id_pago ? payload.new : t)
+            );
+            handleFeedback('Pago de Mercado Pago actualizado!', 'info');
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'transferencias' },
+          (payload) => {
+            console.log('Realtime DELETE received:', payload.old);
+            setTransferencias((prev) => 
+                prev.filter(t => t.id_pago !== payload.old.id_pago)
+            );
+            handleFeedback('Pago de Mercado Pago eliminado!', 'info');
+          }
+        )
+        .subscribe();
+
+      return () => {
+        console.log("Unsubscribing from 'transferencias' Realtime channel.");
+        supabase.removeChannel(subscription);
+      };
+    }
+  }, [isAdmin, tabValue]); // Dependencias para re-ejecutar el efecto
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -361,11 +409,20 @@ function Dashboard({ session, onLogout }) {
 
   // --- ACCIONES EN TABLA ---
 
-  const handleTransferenciaClaimed = () => {
-    if (!isAdmin && tabValue === 2) {
+  const handleTransferenciaClaimed = (claimedId) => {
+    // Si es Admin en la Tab 0 (Gestión Global), actualizamos el estado localmente
+    if (isAdmin && tabValue === 0) {
+        setTransferencias(prev => prev.filter(t => {
+            const currentId = t.banco ? t.id_transaccion : t.id_pago;
+            return currentId !== claimedId;
+        }));
+        // También quitamos de selectedIds si estaba
+        setSelectedIds(prev => prev.filter(id => id !== claimedId));
+    } else if (!isAdmin && tabValue === 2) {
         // Si estamos en "Otros Bancos" (usuario), recargamos esa vista
         fetchUserUnclaimedManuals();
     } else {
+        // En cualquier otro caso, o si no se hizo una eliminación local, recargamos la data con los filtros actuales
         handleSearchSubmit(null);
     }
   };
@@ -407,8 +464,12 @@ function Dashboard({ session, onLogout }) {
         await response.json();
 
         handleFeedback(`${selectedIds.length} transferencias confirmadas correctamente`, 'success');
+        // Eliminar las transferencias confirmadas del estado local
+        setTransferencias(prev => prev.filter(t => {
+            const currentId = t.banco ? t.id_transaccion : t.id_pago;
+            return !selectedIds.includes(currentId);
+        }));
         setSelectedIds([]);
-        handleSearchSubmit(null);
 
       } catch (error) {
         handleFeedback(error.message, 'error');
