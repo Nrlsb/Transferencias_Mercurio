@@ -206,15 +206,13 @@ function Dashboard({ session, onLogout }) {
   const fetchTransferencias = async (queryParams = '') => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await apiClient(`/api/transferencias${queryParams}`);
       const data = await response.json();
-      console.log('Respuesta de la API (transferencias):', data); // DEBUG
-      setTransferencias(Array.isArray(data) ? data : []);
+      const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+      setTransferencias(transferenciasData);
     } catch (e) {
       setError(e.message);
-      // El logout se maneja automáticamente en apiClient si es 401/403
     } finally {
       setLoading(false);
     }
@@ -227,7 +225,8 @@ function Dashboard({ session, onLogout }) {
     try {
       const response = await apiClient('/api/admin/manual-transfers');
       const data = await response.json();
-      setTransferencias(Array.isArray(data) ? data : []);
+      const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+      setTransferencias(transferenciasData);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -242,10 +241,10 @@ function Dashboard({ session, onLogout }) {
       try {
           const response = await apiClient('/api/transferencias?history=true');
           const data = await response.json();
-          setTransferencias(Array.isArray(data) ? data : []);
+          const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+          setTransferencias(transferenciasData);
       } catch (e) {
           setError("Error al cargar historial completo.");
-          console.error(e);
       } finally {
           setLoading(false);
       }
@@ -258,10 +257,10 @@ function Dashboard({ session, onLogout }) {
     try {
         const response = await apiClient('/api/manual-transfers/me?unclaimed=true');
         const data = await response.json();
-        setTransferencias(Array.isArray(data) ? data : []);
+        const transferenciasData = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+        setTransferencias(transferenciasData);
     } catch (e) {
         setError("Error al cargar transferencias pendientes.");
-        console.error(e);
     } finally {
         setLoading(false);
     }
