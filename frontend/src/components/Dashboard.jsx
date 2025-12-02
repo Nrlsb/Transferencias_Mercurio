@@ -210,6 +210,7 @@ function Dashboard({ session, onLogout }) {
     try {
       const response = await apiClient(`/api/transferencias${queryParams}`);
       const data = await response.json();
+      console.log('Respuesta de la API (transferencias):', data); // DEBUG
       setTransferencias(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message);
