@@ -38,7 +38,8 @@ import {
   FormControl,
   OutlinedInput,
   ListItemText,
-  DialogContentText
+  DialogContentText,
+  Skeleton // Agregamos Skeleton
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -51,6 +52,36 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DoneAllIcon from '@mui/icons-material/DoneAll'; 
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; 
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+
+// Componente Skeleton para la tabla
+const TableSkeleton = ({ numRows = 5, numCols = 7 }) => (
+  <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+    <TableContainer>
+      <Table stickyHeader sx={{ minWidth: 700 }}>
+        <TableHead>
+          <TableRow>
+            {Array.from({ length: numCols }).map((_, index) => (
+              <TableCell key={index} sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>
+                <Skeleton variant="text" width="80%" />
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {Array.from({ length: numRows }).map((_, rowIndex) => (
+            <TableRow key={rowIndex}>
+              {Array.from({ length: numCols }).map((_, colIndex) => (
+                <TableCell key={colIndex}>
+                  <Skeleton variant="text" />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Paper>
+);
 
 // Constantes para filtros
 const BANK_OPTIONS = ['Mercado Pago', 'Santander', 'Nacion', 'Santa Fe', 'Macro'];
@@ -847,8 +878,8 @@ function Dashboard({ session, onLogout }) {
 
         <Box>
           {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-              <CircularProgress />
+            <Box sx={{ my: 4 }}>
+              <TableSkeleton />
             </Box>
           )}
           

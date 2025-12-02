@@ -1,8 +1,20 @@
-import { useState, useEffect } from 'react'
-import Auth from './components/Auth'
-import Dashboard from './components/Dashboard'
-import { setupInterceptors } from './utils/apiClient' // Importamos la configuración
-import './App.css'
+import { useState, useEffect } from 'react';
+import Auth from './components/Auth';
+import Dashboard from './components/Dashboard';
+import { setupInterceptors } from './utils/apiClient';
+import './App.css';
+import { Box, Skeleton, Typography } from '@mui/material'; // Importar Skeleton y Box
+
+// Componente Skeleton para la carga inicial de la aplicación
+const AppSkeleton = () => (
+  <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Skeleton variant="rectangular" width="100%" height={60} />
+    <Skeleton variant="text" sx={{ fontSize: '1rem' }} width="60%" />
+    <Skeleton variant="rectangular" width="100%" height={200} />
+    <Skeleton variant="text" sx={{ fontSize: '1rem' }} width="80%" />
+    <Skeleton variant="rectangular" width="100%" height={100} />
+  </Box>
+);
 
 function App() {
   const [token, setToken] = useState(null);
@@ -40,7 +52,7 @@ function App() {
     setUser(newUser);
   };
 
-  if (loading) return null; // O un spinner de carga
+  if (loading) return <AppSkeleton />;
 
   // Pasamos un objeto "session" simulado al Dashboard para mantener compatibilidad
   const mockSession = token ? { access_token: token, user: user } : null;
