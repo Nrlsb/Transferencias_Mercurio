@@ -279,18 +279,22 @@ class TransferenciaService {
   }
 
   async createManualTransfer({ id_transaccion, banco, monto, userId }) {
-    const { data, error } = await supabase
-        .from('transferencias_manuales')
-        .insert([{ 
-            id_transaccion, 
-            banco, 
-            monto: parseFloat(monto), 
-            user_id: userId, 
-            fecha_reclamo: null,
-            confirmed: false
-        }])
-        .select();
-    if (error) throw error;
+    // Llama a la función RPC (Remote Procedure Call) de Supabase para ejecutar la función de base de datos.
+    const { data, error } = await supabase.rpc('create_manual_transfer_atomic', {
+        p_id_transaccion: id_transaccion,
+        p_banco: banco,
+        p_monto: parseFloat(monto), // Asegurarse de que el tipo sea NUMERIC/FLOAT en la DB
+        p_user_id: userId
+    });
+
+    if (error) {
+        // Supabase RPC devuelve un error si la función de DB lanza una excepción.
+        // Adaptar el mensaje de error si es necesario, o relanzar el original.
+        console.error("Error al llamar a create_manual_transfer_atomic:", error.message);
+        throw new Error(`Error en la transacción de transferencia manual: ${error.message}`);
+    }
+    // La función RPC devuelve un array de registros, si la función SQL devuelve SETOF.
+    // Si se espera un único registro, se puede tomar el primero.
     return data[0];
   }
 
