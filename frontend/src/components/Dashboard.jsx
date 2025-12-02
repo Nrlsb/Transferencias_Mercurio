@@ -654,10 +654,20 @@ function Dashboard({ session, onLogout }) {
         alignItems: 'center',
         justifyContent: open ? 'space-between' : 'center',
         minHeight: 64,
+        position: 'relative'
       }}>
         {open ? (
           <>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              ...(session?.user?.Area?.toLowerCase() === 'espint' && {
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)'
+              })
+            }}>
               {(() => {
                 const area = session?.user?.Area?.toLowerCase();
                 let logoSrc = null;
@@ -699,7 +709,7 @@ function Dashboard({ session, onLogout }) {
                 );
               })()}
             </Box>
-            <IconButton onClick={() => setOpen(false)} sx={{ color: 'white' }}>
+            <IconButton onClick={() => setOpen(false)} sx={{ color: 'white', zIndex: 1 }}>
               <ChevronLeftIcon />
             </IconButton>
           </>
