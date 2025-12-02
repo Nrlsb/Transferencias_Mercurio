@@ -153,7 +153,7 @@ class TransferenciaService {
     let totalCount = 0;
 
     // Procesar resultados MP (siempre es el primero si existe)
-    if (includeMP) { // Usar includeMP/includeManual para saber si la promesa existía
+    if (queryMP) { // Usar queryMP para saber si la promesa existía
         const resMP = results.shift(); 
         if (resMP.error) throw new Error('MP Error: ' + resMP.error.message);
         combined = [...combined, ...(resMP.data || [])];
@@ -161,7 +161,7 @@ class TransferenciaService {
     }
 
     // Procesar resultados Manual
-    if (includeManual) { // Usar includeMP/includeManual para saber si la promesa existía
+    if (queryMan) { // Usar queryMan para saber si la promesa existía
         const resMan = results.shift();
         if (resMan.error) throw new Error('Manual Error: ' + resMan.error.message);
         combined = [...combined, ...(resMan.data || [])];
