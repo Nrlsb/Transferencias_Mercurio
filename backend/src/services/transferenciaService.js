@@ -97,10 +97,18 @@ class TransferenciaService {
 
     } else if (isHistoryMode) {
         // User History Logic (CLIENTE - PESTAÑA HISTORIAL)
-        if(queryMP) queryMP = queryMP.eq('claimed_by', userId);
+        // FIX: Asegurarse que el userId exista antes de filtrar
+        if (!userId) {
+            // Si no hay ID de usuario en modo historial, no se puede devolver nada.
+            // Esto previene un error 500 si userId es undefined.
+            queryMP = null;
+            queryMan = null;
+        } else {
+            if(queryMP) queryMP = queryMP.eq('claimed_by', userId);
         
-        // MODIFICACIÓN: En el historial del cliente, SOLO mostramos las manuales YA RECLAMADAS
-        if(queryMan) queryMan = queryMan.eq('user_id', userId).not('fecha_reclamo', 'is', null);
+            // MODIFICACIÓN: En el historial del cliente, SOLO mostramos las manuales YA RECLAMADAS
+            if(queryMan) queryMan = queryMan.eq('user_id', userId).not('fecha_reclamo', 'is', null);
+        }
     } else {
         // User Search Logic
         if(queryMP) queryMP = queryMP.is('claimed_by', null);
