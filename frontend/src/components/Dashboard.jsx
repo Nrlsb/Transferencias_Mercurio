@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient'; // Importar el cliente Supabase
-import Transferencia from './Transferencia';
+import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { apiClient } from '../utils/apiClient'; // Usamos el nuevo cliente
+import { apiClient } from '../utils/apiClient';
+
+// Importar nuevos sub-componentes
+import TransferFilters from './TransferFilters';
+import TransferTable from './TransferTable';
+import ManualTransferModal from './ManualTransferModal';
+import StatsCards from './StatsCards';
+
 import {
   AppBar,
   Box,
@@ -11,85 +17,27 @@ import {
   Typography,
   Button,
   Container,
-  Grid,
-  TextField,
   Paper,
-  CircularProgress,
   Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  InputAdornment,
   Snackbar,
   Tabs,
   Tab,
   Chip,
-  Checkbox,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl,
-  OutlinedInput,
-  ListItemText,
-  DialogContentText,
-  Skeleton // Agregamos Skeleton
+  DialogContentText
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
 import SearchIcon from '@mui/icons-material/Search';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import ListAltIcon from '@mui/icons-material/ListAlt'; 
+import ListAltIcon from '@mui/icons-material/ListAlt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import DoneAllIcon from '@mui/icons-material/DoneAll'; 
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance'; 
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-
-// Componente Skeleton para la tabla
-const TableSkeleton = ({ numRows = 5, numCols = 7 }) => (
-  <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-    <TableContainer>
-      <Table stickyHeader sx={{ minWidth: 700 }}>
-        <TableHead>
-          <TableRow>
-            {Array.from({ length: numCols }).map((_, index) => (
-              <TableCell key={index} sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>
-                <Skeleton variant="text" width="80%" />
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {Array.from({ length: numRows }).map((_, rowIndex) => (
-            <TableRow key={rowIndex}>
-              {Array.from({ length: numCols }).map((_, colIndex) => (
-                <TableCell key={colIndex}>
-                  <Skeleton variant="text" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Paper>
-);
-
-// Constantes para filtros
-const BANK_OPTIONS = ['Mercado Pago', 'Santander', 'Nacion', 'Santa Fe', 'Macro'];
-const CLAIM_OPTIONS = [
-  { value: 'all', label: 'Todas' },
-  { value: 'claimed', label: 'Reclamadas' },
-  { value: 'unclaimed', label: 'No Reclamadas' }
-];
 
 function Dashboard({ session, onLogout }) {
   const [transferencias, setTransferencias] = useState([]);
@@ -675,29 +623,12 @@ function Dashboard({ session, onLogout }) {
                     </Button>
                 )}
 
-                {/* DISPLAY TOTAL SELECCIONADO - SOLO SI HAY SELECCIONADOS */}
-                {isAdmin && selectedIds.length > 0 && (
-                    <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e8f5e9', borderRadius: 20, border: '1px solid #a5d6a7' }}>
-                        <Typography variant="subtitle1" component="span" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
-                            Total Seleccionado: 
-                        </Typography>
-                        <Typography variant="h6" component="span" sx={{ ml: 1, color: '#1b5e20', fontWeight: 800 }}>
-                            ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                        </Typography>
-                    </Paper>
-                )}
-
-                {/* DISPLAY TOTAL VISTA (SOLO PARA ADMIN) */}
-                {isAdmin && (
-                    <Paper elevation={0} sx={{ p: 1.5, px: 3, bgcolor: '#e3f2fd', borderRadius: 20, border: '1px solid #90caf9' }}>
-                        <Typography variant="subtitle1" component="span" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
-                            Total Vista: 
-                        </Typography>
-                        <Typography variant="h6" component="span" sx={{ ml: 1, color: '#0d47a1', fontWeight: 800 }}>
-                            ${totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                        </Typography>
-                    </Paper>
-                )}
+                <StatsCards 
+                    isAdmin={isAdmin}
+                    selectedIds={selectedIds}
+                    totalSelectedAmount={totalSelectedAmount}
+                    totalAmount={totalAmount}
+                />
             </Box>
         </Box>
 
@@ -721,361 +652,47 @@ function Dashboard({ session, onLogout }) {
             </Alert>
         )}
 
-        {/* FILTROS (Ocultos solo en Admin Manuales Tab 2) */}
-        {!(isAdmin && tabValue === 2) && (
-            <Paper elevation={0} sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: '#fff' }}>
-                <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-                    {isAdmin ? 'Filtros Globales (Admin)' : 'Filtros de Búsqueda'}
-                </Typography>
-                <Box component="form" onSubmit={handleSearchSubmit}>
-                    <Grid container spacing={2} alignItems="center">
-                        
-                        {!isAdmin && (
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                fullWidth
-                                placeholder="Monto Exacto"
-                                type="number"
-                                label="Monto"
-                                variant="outlined"
-                                value={montoFilter}
-                                onChange={(e) => setMontoFilter(e.target.value)}
-                                size="small"
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                }}
-                                />
-                            </Grid>
-                        )}
+        <TransferFilters
+            isAdmin={isAdmin}
+            tabValue={tabValue}
+            montoFilter={montoFilter} setMontoFilter={setMontoFilter}
+            fechaFilter={fechaFilter} setFechaFilter={setFechaFilter}
+            adminUserFilter={adminUserFilter} setAdminUserFilter={setAdminUserFilter}
+            dateFromFilter={dateFromFilter} setDateFromFilter={setDateFromFilter}
+            dateToFilter={dateToFilter} setDateToFilter={setDateToFilter}
+            bankFilter={bankFilter} handleBankFilterChange={handleBankFilterChange}
+            claimStatusFilter={claimStatusFilter} setClaimStatusFilter={setClaimStatusFilter}
+            handleSearchSubmit={handleSearchSubmit}
+            handleExportPDF={handleExportPDF}
+            transferenciasCount={transferencias.length}
+        />
 
-                        {isAdmin ? (
-                            <>
-                                {/* FILTRO DE BANCOS MULTI-SELECT (NUEVO) */}
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <FormControl sx={{ width: '100%' }} size="small">
-                                        <InputLabel id="bank-filter-label">Bancos</InputLabel>
-                                        <Select
-                                            labelId="bank-filter-label"
-                                            multiple
-                                            value={bankFilter}
-                                            onChange={handleBankFilterChange}
-                                            input={<OutlinedInput label="Bancos" />}
-                                            renderValue={(selected) => selected.join(', ')}
-                                        >
-                                            <MenuItem value="Todas">
-                                                <ListItemText primary="-- Todos los bancos --" />
-                                            </MenuItem>
-                                            {BANK_OPTIONS.map((name) => (
-                                                <MenuItem key={name} value={name}>
-                                                    <Checkbox checked={bankFilter.indexOf(name) > -1} size="small"/>
-                                                    <ListItemText primary={name} />
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-
-                                {/* FILTRO ESTADO RECLAMO (NUEVO) */}
-                                <Grid item xs={12} sm={6} md={2}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel>Estado</InputLabel>
-                                        <Select
-                                            value={claimStatusFilter}
-                                            label="Estado"
-                                            onChange={(e) => setClaimStatusFilter(e.target.value)}
-                                        >
-                                            {CLAIM_OPTIONS.map(opt => (
-                                                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
-
-                                <Grid item xs={12} sm={6} md={2}>
-                                    <TextField
-                                    fullWidth
-                                    label="Desde"
-                                    type="date" 
-                                    variant="outlined"
-                                    value={dateFromFilter}
-                                    onChange={(e) => setDateFromFilter(e.target.value)}
-                                    size="small"
-                                    InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={2}>
-                                    <TextField
-                                    fullWidth
-                                    label="Hasta"
-                                    type="date" 
-                                    variant="outlined"
-                                    value={dateToFilter}
-                                    onChange={(e) => setDateToFilter(e.target.value)}
-                                    size="small"
-                                    InputLabelProps={{ shrink: true }}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={6} md={3}>
-                                    <TextField
-                                    fullWidth
-                                    placeholder="email@ejemplo.com"
-                                    label="Email"
-                                    type="text"
-                                    variant="outlined"
-                                    value={adminUserFilter}
-                                    onChange={(e) => setAdminUserFilter(e.target.value)}
-                                    size="small"
-                                    />
-                                </Grid>
-                            </>
-                        ) : (
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                fullWidth
-                                type="date"
-                                variant="outlined"
-                                value={fechaFilter}
-                                onChange={(e) => setFechaFilter(e.target.value)}
-                                size="small"
-                                />
-                            </Grid>
-                        )}
-
-                        <Grid item xs={12} sm={6} md={isAdmin ? 3 : 3} container spacing={1}>
-                            <Grid item xs={isAdmin ? 6 : 12}>
-                                <Button 
-                                type="submit" 
-                                variant="contained" 
-                                disableElevation
-                                fullWidth 
-                                startIcon={<FilterListIcon />}
-                                sx={{ borderRadius: 20, height: '40px' }}
-                                >
-                                {isAdmin ? 'Filtrar' : 'Buscar'}
-                                </Button>
-                            </Grid>
-                            
-                            {isAdmin && (
-                                <Grid item xs={6}>
-                                    <Button 
-                                        variant="outlined" 
-                                        color="secondary"
-                                        fullWidth 
-                                        onClick={handleExportPDF}
-                                        disabled={transferencias.length === 0}
-                                        startIcon={<PictureAsPdfIcon />}
-                                        sx={{ borderRadius: 20, height: '40px' }}
-                                    >
-                                        PDF
-                                    </Button>
-                                </Grid>
-                            )}
-                        </Grid>
-                    </Grid>
-                </Box>
-            </Paper>
-        )}
-
-        <Box>
-          {loading && (
-            <Box sx={{ my: 4 }}>
-              <TableSkeleton />
-            </Box>
-          )}
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {!loading && !error && (
-            (isAdmin || (tabValue === 0 && filtersApplied) || (tabValue === 1) || (tabValue === 2)) ? (
-                <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                    <TableContainer sx={{ maxHeight: 600 }}>
-                    <Table stickyHeader sx={{ minWidth: 700 }} aria-label="tabla de transferencias">
-                        <TableHead>
-                        <TableRow>
-                            {/* HEADERS DIFERENTES SEGUN TAB */}
-                            {isAdmin && tabValue === 2 ? (
-                                // HEADERS TABLA MANUAL (ADMIN)
-                                <>
-                                    <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>ID Transacción</TableCell>
-                                    <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Banco</TableCell>
-                                    <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Fecha Carga</TableCell>
-                                    <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }}>Cliente Asignado</TableCell>
-                                    <TableCell sx={{ bgcolor: '#e0f7fa', fontWeight: 'bold' }} align="right">Monto</TableCell>
-                                </>
-                            ) : (
-                                // HEADERS TABLA MERCADO PAGO / MIXTA
-                                <>
-                                    {isAdmin && tabValue === 0 && (
-                                        <TableCell padding="checkbox" sx={{ bgcolor: '#f5f5f5' }}>
-                                            <Checkbox 
-                                                indeterminate={selectedIds.length > 0 && selectedIds.length < transferencias.length}
-                                                checked={transferencias.length > 0 && selectedIds.length === transferencias.length}
-                                                onChange={handleSelectAll}
-                                                color="primary"
-                                            />
-                                        </TableCell>
-                                    )}
-
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>ID / Ref</TableCell>
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Descripción / Banco</TableCell>
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha</TableCell>
-
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Estado</TableCell>
-                                    
-                                    {/* NUEVO: Columna Fecha Reclamo para Cliente en Historial */}
-                                    {!isAdmin && tabValue === 1 && (
-                                        <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }}>Fecha Reclamo</TableCell>
-                                    )}
-
-                                    {isAdmin && (
-                                        <TableCell sx={{ bgcolor: '#ffebee', fontWeight: 'bold', color: '#d32f2f' }}>
-                                            Reclamado Por
-                                        </TableCell>
-                                    )}
-                                    <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold' }} align="right">Monto (ARS)</TableCell>
-                                </>
-                            )}
-                        </TableRow>
-                        </TableHead>
-                        <TableBody>
-                        {transferencias.length > 0 ? (
-                            transferencias.map((t, idx) => {
-                                // DETECTAR SI ES MANUAL (tiene prop 'banco')
-                                const isManual = !!t.banco;
-                                
-                                // ID CORRECTO PARA LA KEY Y SELECCIÓN
-                                const currentId = isManual ? t.id_transaccion : t.id_pago;
-
-                                // RENDER ADMIN MANUAL TAB (VISTA DEDICADA)
-                                if (isAdmin && tabValue === 2) {
-                                    return (
-                                        <TableRow key={currentId || idx} hover>
-                                            <TableCell>{t.id_transaccion}</TableCell>
-                                            <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small"/></TableCell>
-                                            <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                                            <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
-                                        </TableRow>
-                                    );
-                                } 
-                                
-                                // RENDER USUARIO O ADMIN MP (VISTA UNIFICADA)
-                                return (
-                                    <Transferencia 
-                                        key={currentId || idx} 
-                                        transferencia={t} 
-                                        session={session}
-                                        onClaimSuccess={handleTransferenciaClaimed}
-                                        onFeedback={handleFeedback}
-                                        isAdmin={isAdmin}
-                                        isSelectable={isAdmin && tabValue === 0}
-                                        isSelected={selectedIds.includes(currentId)}
-                                        onToggleSelect={handleToggleSelect}
-                                        // NUEVO PROP
-                                        showClaimDate={!isAdmin && tabValue === 1}
-                                    />
-                                );
-                            })
-                        ) : (
-                            <TableRow>
-                            <TableCell colSpan={isAdmin ? 8 : 6} align="center" sx={{ py: 3 }}>
-                                <Typography variant="body1" color="text.secondary">
-                                    {isAdmin 
-                                     ? (tabValue === 2 ? "No hay transferencias de otros bancos cargadas." : "No se encontraron transferencias.") 
-                                     : (tabValue === 0 
-                                        ? "No se encontraron transferencias con esos filtros." 
-                                        : (tabValue === 2 ? "No tienes transferencias de otros bancos pendientes de reclamo." : "Aún no tienes transferencias en tu historial."))}
-                                </Typography>
-                            </TableCell>
-                            </TableRow>
-                        )}
-                        </TableBody>
-                    </Table>
-                    </TableContainer>
-                </Paper>
-            ) : (
-                tabValue === 0 && !filtersApplied && !loading && !isAdmin && (
-                    <Box sx={{ textAlign: 'center', mt: 4, p: 4, bgcolor: '#f9f9f9', borderRadius: 2 }}>
-                        <Typography color="text.secondary">
-                            Utiliza los filtros de arriba para encontrar nuevas transferencias.
-                        </Typography>
-                    </Box>
-                )
-            )
-          )}
-        </Box>
+        <TransferTable
+            loading={loading}
+            error={error}
+            isAdmin={isAdmin}
+            tabValue={tabValue}
+            filtersApplied={filtersApplied}
+            transferencias={transferencias}
+            selectedIds={selectedIds}
+            handleSelectAll={handleSelectAll}
+            session={session}
+            handleTransferenciaClaimed={handleTransferenciaClaimed}
+            handleFeedback={handleFeedback}
+            handleToggleSelect={handleToggleSelect}
+        />
 
       </Container>
       
-      {/* MODAL DE CARGA MANUAL (SOLO ADMIN) */}
-      <Dialog open={openManualModal} onClose={() => setOpenManualModal(false)} maxWidth="sm" fullWidth>
-            <DialogTitle>Cargar Manual (Otros Bancos)</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                    <TextField 
-                        label="ID Transacción" 
-                        name="id_transaccion" 
-                        fullWidth 
-                        value={manualData.id_transaccion}
-                        onChange={handleManualChange}
-                        placeholder="Ej: 999111222"
-                    />
-                    
-                    <FormControl fullWidth>
-                        <InputLabel>Banco</InputLabel>
-                        <Select
-                            name="banco"
-                            value={manualData.banco}
-                            label="Banco"
-                            onChange={handleManualChange}
-                        >
-                            <MenuItem value="Santander">Santander</MenuItem>
-                            <MenuItem value="Nacion">Nación</MenuItem>
-                            <MenuItem value="Santa Fe">Santa Fe</MenuItem>
-                            <MenuItem value="Macro">Macro</MenuItem>
-                        </Select>
-                    </FormControl>
-
-                    <TextField 
-                        label="Monto" 
-                        name="monto" 
-                        type="number"
-                        fullWidth 
-                        value={manualData.monto}
-                        onChange={handleManualChange}
-                        InputProps={{
-                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        }}
-                    />
-
-                    <FormControl fullWidth>
-                        <InputLabel>Cliente</InputLabel>
-                        <Select
-                            name="userId"
-                            value={manualData.userId}
-                            label="Cliente"
-                            onChange={handleManualChange}
-                        >
-                            {usersList.map(u => (
-                                <MenuItem key={u.id} value={u.id}>
-                                    {u.email}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Box>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setOpenManualModal(false)}>Cancelar</Button>
-                <Button onClick={handleSubmitManual} variant="contained" disabled={loadingManual}>
-                    {loadingManual ? 'Guardando...' : 'Guardar'}
-                </Button>
-            </DialogActions>
-      </Dialog>
+      <ManualTransferModal
+        open={openManualModal}
+        onClose={() => setOpenManualModal(false)}
+        manualData={manualData}
+        handleManualChange={handleManualChange}
+        handleSubmitManual={handleSubmitManual}
+        loadingManual={loadingManual}
+        usersList={usersList}
+      />
 
       {/* MODAL DE CONFIRMACIÓN MASIVA (NUEVO) */}
       <Dialog
