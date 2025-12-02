@@ -168,12 +168,24 @@ class TransferenciaService {
         totalCount += resMan.count || 0;
     }
 
-    // Ordenar descendente
-    combined.sort((a, b) => {
-        const dateA = new Date(a.fecha_aprobado || a.fecha_carga);
-        const dateB = new Date(b.fecha_aprobado || b.fecha_carga);
-        return dateB - dateA;
-    });
+    // Ordenamiento final
+    if (!isAdmin && isHistoryMode) {
+      // Para el historial del cliente, ordenar por fecha de reclamo descendente.
+      // En el modo historial, ambas transferencias (MP y Manual) ya han sido reclamadas 
+      // y por lo tanto tienen un campo `fecha_reclamo`.
+      combined.sort((a, b) => {
+          const dateA = new Date(a.fecha_reclamo);
+          const dateB = new Date(b.fecha_reclamo);
+          return dateB - dateA;
+      });
+    } else {
+        // Para administradores y búsqueda de clientes, ordenar por fecha de carga/aprobación descendente.
+        combined.sort((a, b) => {
+            const dateA = new Date(a.fecha_aprobado || a.fecha_carga);
+            const dateB = new Date(b.fecha_aprobado || b.fecha_carga);
+            return dateB - dateA;
+        });
+    }
 
     return { data: combined, totalCount: totalCount };
   }
