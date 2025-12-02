@@ -55,10 +55,10 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import StorefrontIcon from '@mui/icons-material/Storefront'; // Icono para el logo placeholder
 
-import espintLogo from '../assets/espintBlanco.png';
-import mercurioLogo from '../assets/mercurioBlanco.png';
-import casaPintorLogo from '../assets/casaDelPintorBlanco.png';
-import automotorLogo from '../assets/automotorBlanco.png';
+import espintLogo from '../assets/espintBlanco.svg';
+import mercurioLogo from '../assets/mercurioBlanco.svg';
+import casaPintorLogo from '../assets/casaDelPintorBlanco.svg';
+import automotorLogo from '../assets/automotorBlanco.svg';
 
 const drawerWidth = 260;
 const closedDrawerWidth = 72; // Ancho cuando está cerrado (suficiente para iconos)
