@@ -196,7 +196,7 @@ function Dashboard({ session, onLogout }) {
           // Ya no necesitamos pasar headers manuales ni URL base
           const response = await apiClient('/api/admin/users');
           const data = await response.json();
-          setUsersList(data);
+          setUsersList(Array.isArray(data) ? data : []);
       } catch (e) {
           console.error("Error cargando usuarios", e);
       }
@@ -210,7 +210,7 @@ function Dashboard({ session, onLogout }) {
     try {
       const response = await apiClient(`/api/transferencias${queryParams}`);
       const data = await response.json();
-      setTransferencias(data);
+      setTransferencias(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message);
       // El logout se maneja automáticamente en apiClient si es 401/403
@@ -226,7 +226,7 @@ function Dashboard({ session, onLogout }) {
     try {
       const response = await apiClient('/api/admin/manual-transfers');
       const data = await response.json();
-      setTransferencias(data);
+      setTransferencias(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -241,7 +241,7 @@ function Dashboard({ session, onLogout }) {
       try {
           const response = await apiClient('/api/transferencias?history=true');
           const data = await response.json();
-          setTransferencias(data);
+          setTransferencias(Array.isArray(data) ? data : []);
       } catch (e) {
           setError("Error al cargar historial completo.");
           console.error(e);
@@ -257,7 +257,7 @@ function Dashboard({ session, onLogout }) {
     try {
         const response = await apiClient('/api/manual-transfers/me?unclaimed=true');
         const data = await response.json();
-        setTransferencias(data);
+        setTransferencias(Array.isArray(data) ? data : []);
     } catch (e) {
         setError("Error al cargar transferencias pendientes.");
         console.error(e);
