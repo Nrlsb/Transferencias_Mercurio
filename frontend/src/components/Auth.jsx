@@ -13,6 +13,10 @@ import {
   Link
 } from '@mui/material';
 
+import espintLogo from '../assets/espintBlanco.svg';
+import casaPintorLogo from '../assets/casaDelPintorBlanco.svg';
+import automotorLogo from '../assets/automotorBlanco.svg';
+
 // Recibimos la función setToken desde App.jsx para actualizar el estado global
 export default function Auth({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -81,7 +85,22 @@ export default function Auth({ onLoginSuccess }) {
         backgroundImage: 'linear-gradient(135deg, #183050 0%, #102035 100%)' // Sutil gradiente
       }}
     >
-      <Container component="main" maxWidth="xs">
+      <Container component="main" maxWidth="xs" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+        {/* Logos Header */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 4,
+          mb: 4,
+          opacity: 0.8
+        }}>
+          <Box component="img" src={espintLogo} alt="Espint" sx={{ height: 30 }} />
+          <Box component="img" src={casaPintorLogo} alt="Casa del Pintor" sx={{ height: 30 }} />
+          <Box component="img" src={automotorLogo} alt="Automotor" sx={{ height: 30 }} />
+        </Box>
+
         <Card sx={{ width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', borderRadius: 4 }}>
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 4 }}>
             <Box sx={{ mb: 4, textAlign: 'center' }}>
