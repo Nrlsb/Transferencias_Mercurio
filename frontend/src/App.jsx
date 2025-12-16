@@ -51,17 +51,17 @@ function App() {
     setToken(newToken);
     setUser(newUser);
   };
-  
+
   const theme = useMemo(() => {
     // El area puede venir con mayúsculas o minúsculas, normalizamos a minúscula.
     const userArea = user?.area?.toLowerCase() || '';
-    
+
     return createTheme({
       palette: {
         mode: 'light',
         primary: {
           // Si el área es 'automotor', el color principal es negro, si no, el azul corporativo oscuro.
-          main: userArea === 'automotor' ? '#000000' : '#1E293B', // Azul oscuro branding
+          main: userArea === 'automotor' ? '#000000' : '#1e3773', // Azul oscuro branding
         },
         secondary: {
           main: '#2563EB', // Azul Vibrante (Acción)
@@ -196,10 +196,10 @@ function App() {
         {!token ? (
           <Auth onLoginSuccess={handleLoginSuccess} />
         ) : (
-          <Dashboard 
-              key={user.id} 
-              session={mockSession} 
-              onLogout={handleLogout}
+          <Dashboard
+            key={user.id}
+            session={mockSession}
+            onLogout={handleLogout}
           />
         )}
       </div>

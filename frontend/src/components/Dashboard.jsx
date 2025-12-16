@@ -670,12 +670,7 @@ function Dashboard({ session, onLogout }) {
             <Box sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
-              ...(session?.user?.Area?.toLowerCase() === 'espint' && {
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)'
-              })
+              gap: 1
             }}>
               {(() => {
                 const area = session?.user?.Area?.toLowerCase();
