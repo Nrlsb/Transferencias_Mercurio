@@ -670,6 +670,8 @@ function Dashboard({ session, onLogout }) {
             <Box sx={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
+              flexGrow: 1,
               gap: 1
             }}>
               {(() => {
@@ -856,7 +858,13 @@ function Dashboard({ session, onLogout }) {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* APP BAR (Solo visible en Mobile para el botón de menú) */}
       {isMobile && (
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <AppBar
+          position="fixed"
+          sx={{
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+            bgcolor: session?.user?.Area?.toLowerCase() === 'automotor' ? '#000000' : 'primary.main'
+          }}
+        >
           <Toolbar>
             <IconButton
               color="inherit"
@@ -972,7 +980,9 @@ function Dashboard({ session, onLogout }) {
                         </MenuItem>,
                         ...notificaciones.map((n, index) => (
                           <MenuItem key={index} onClick={handleMenuClose}>
-                            {n.mensaje}
+                            <Typography variant="body2" color="text.primary">
+                              {n.mensaje}
+                            </Typography>
                           </MenuItem>
                         ))
                       ]
