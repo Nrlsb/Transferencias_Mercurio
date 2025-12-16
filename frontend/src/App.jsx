@@ -60,56 +60,58 @@ function App() {
       palette: {
         mode: 'light',
         primary: {
-          // Si el área es 'automotor', el color principal es negro, si no, el azul corporativo.
-          main: userArea === 'automotor' ? '#000000' : '#1e3773',
+          // Si el área es 'automotor', el color principal es negro, si no, el azul corporativo oscuro.
+          main: userArea === 'automotor' ? '#000000' : '#1E293B', // Azul oscuro branding
         },
         secondary: {
-          main: '#007BFF', // Azul Vibrante (Acción)
+          main: '#2563EB', // Azul Vibrante (Acción)
         },
         background: {
-          default: '#F4F6F9', // Gris azulado muy claro
+          default: '#F1F5F9', // Gris claro
           paper: '#FFFFFF',   // Blanco puro
         },
         text: {
-          primary: '#183050', // Azul oscuro para texto principal
-          secondary: '#6c757d', // Gris neutro para secundario
+          primary: '#1E293B', // Azul oscuro para texto principal
+          secondary: '#64748B', // Gris azulado neutro
         },
         success: {
-          main: '#8CC63F', // Verde Lima (Aprobado)
+          main: '#166534', // Verde oscuro texto
+          light: '#DCFCE7', // Verde claro fondo
           contrastText: '#fff',
         },
         warning: {
-          main: '#FFC20E', // Amarillo (Alerta)
-          contrastText: '#183050',
+          main: '#D97706', // Ambar
+          contrastText: '#fff',
         },
         info: {
-          main: '#C6007E', // Magenta (Pendiente/Reclamo)
+          main: '#3B82F6', // Azul info
           contrastText: '#fff',
         },
       },
       typography: {
         fontFamily: "'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif",
-        h1: { fontWeight: 700, color: '#183050' },
-        h5: { fontWeight: 600, color: '#183050' },
-        h6: { fontWeight: 600, color: '#183050' },
+        h1: { fontWeight: 700, color: '#1E293B' },
+        h5: { fontWeight: 600, color: '#1E293B' },
+        h6: { fontWeight: 600, color: '#1E293B' },
         subtitle1: { fontWeight: 500 },
         button: { fontWeight: 600, textTransform: 'none' },
+        body1: { fontSize: '1rem' }, // Base size 16px
       },
       components: {
         MuiButton: {
           styleOverrides: {
             root: {
               borderRadius: 8,
-              padding: '8px 24px',
+              padding: '10px 24px', // Un poco más de padding
               boxShadow: 'none',
               '&:hover': {
-                boxShadow: '0px 4px 12px rgba(0,0,0,0.1)',
+                boxShadow: '0px 4px 12px rgba(37, 99, 235, 0.2)',
               },
             },
             containedPrimary: {
-              backgroundColor: '#007BFF',
+              backgroundColor: '#2563EB',
               '&:hover': {
-                backgroundColor: '#0056b3',
+                backgroundColor: '#1D4ED8',
               },
             },
           },
@@ -117,9 +119,9 @@ function App() {
         MuiCard: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
-              boxShadow: '0px 4px 20px rgba(0,0,0,0.05)',
-              border: 'none',
+              borderRadius: 16, // Bordes más redondeados
+              boxShadow: '0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              border: '1px solid #E2E8F0',
             },
           },
         },
@@ -137,14 +139,14 @@ function App() {
           styleOverrides: {
             head: {
               fontWeight: 600,
-              color: '#6c757d',
+              color: '#64748B',
               textTransform: 'uppercase',
               fontSize: '0.75rem',
-              borderBottom: '1px solid #e9ecef',
-              backgroundColor: '#fff',
+              borderBottom: '1px solid #E2E8F0',
+              backgroundColor: '#F8FAFC',
             },
             root: {
-              borderBottom: '1px solid #f1f3f5',
+              borderBottom: '1px solid #F1F3F5',
               padding: '16px',
             },
           },
@@ -154,6 +156,15 @@ function App() {
             root: {
               borderRadius: 8,
               backgroundColor: '#fff',
+              '& fieldset': {
+                borderColor: '#E2E8F0',
+              },
+              '&:hover fieldset': {
+                borderColor: '#CBD5E1',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#2563EB',
+              },
             },
           },
         },

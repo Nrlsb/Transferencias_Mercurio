@@ -13,11 +13,21 @@ import {
   Typography,
   Chip,
   Skeleton,
-  TablePagination
+  TablePagination,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
+  Stack,
+  IconButton,
+  Tooltip,
+  Divider
 } from '@mui/material';
-import Transferencia from './Transferencia'; // La tabla usa este componente para renderizar filas
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import Transferencia from './Transferencia'; // Componente de fila para Desktop
 
-// El componente Skeleton para la tabla ahora vive aquí.
+// Componente Skeleton para la tabla (Desktop)
 const TableSkeleton = ({ numRows = 5, numCols = 7 }) => (
   <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
     <TableContainer>
@@ -47,6 +57,134 @@ const TableSkeleton = ({ numRows = 5, numCols = 7 }) => (
   </Paper>
 );
 
+// Componente Skeleton para Tarjetas (Mobile)
+const CardSkeleton = ({ numCards = 3 }) => (
+  <Stack spacing={2}>
+    {Array.from({ length: numCards }).map((_, index) => (
+      <Card key={index} sx={{ borderRadius: 3, boxShadow: 'none', border: '1px solid #e0e0e0' }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Skeleton variant="circular" width={40} height={40} />
+            <Skeleton variant="text" width="30%" />
+          </Box>
+          <Skeleton variant="text" width="60%" sx={{ mb: 1 }} />
+          <Skeleton variant="text" width="40%" />
+        </CardContent>
+      </Card>
+    ))}
+  </Stack>
+);
+
+// Componente de Tarjeta Individual para Mobile
+const TransferCard = ({ t, isAdmin, tabValue, session, onClaimSuccess, onFeedback }) => {
+  const isManual = !!t.banco;
+  const currentId = isManual ? t.id_transaccion : t.id_pago;
+
+  // Parsing de datos (lógica similar a Transferencia.jsx)
+  const datosParsed = !isManual && typeof t.datos_completos === 'string'
+    ? JSON.parse(t.datos_completos)
+    : (t.datos_completos || {});
+
+  const rawDate = isManual ? t.fecha_carga : datosParsed.date_approved;
+  const formattedDate = rawDate
+    ? new Date(rawDate).toLocaleDateString()
+    : 'N/A';
+
+  const monto = isManual ? t.monto : datosParsed.transaction_amount;
+  const status = isManual ? 'approved' : datosParsed.status;
+
+  let bancoNombre = 'Mercado Pago';
+  if (isManual) bancoNombre = t.banco;
+
+  let estadoLabel = 'Pendiente';
+  let estadoColor = 'warning'; // default
+
+  if (status === 'approved' || isManual) {
+    estadoLabel = 'Aprobado';
+    estadoColor = 'success';
+  }
+
+  // Lógica de copia simple para mobile
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(currentId.toString());
+    if (onFeedback) onFeedback(`ID ${currentId} copiado`, 'info');
+  };
+
+  return (
+    <Card sx={{ mb: 2, position: 'relative', overflow: 'visible' }}>
+      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+        {/* Header: Icono/Banco + Monto */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              bgcolor: isManual ? 'primary.light' : '#009EE3', // Azul MP
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <AccountBalanceIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
+                {bancoNombre}
+              </Typography>
+              <Box
+                onClick={handleCopyId}
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'pointer', mt: 0.5 }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  #{currentId}
+                </Typography>
+                <ContentCopyIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
+              </Box>
+            </Box>
+          </Box>
+          <Typography variant="h6" color="primary.main" fontWeight="bold">
+            ${parseFloat(monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+          </Typography>
+        </Box>
+
+        <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
+
+        {/* Body: Detalles */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="caption" display="block" color="text.secondary">
+              Fecha
+            </Typography>
+            <Typography variant="body2" fontWeight="500">
+              {formattedDate}
+            </Typography>
+          </Box>
+
+          <Box sx={{ textAlign: 'right' }}>
+            <Chip
+              label={estadoLabel}
+              size="small"
+              color={estadoColor}
+              sx={{ fontWeight: 600, borderRadius: 1 }}
+            />
+          </Box>
+        </Box>
+
+        {/* Info Extra para Admin */}
+        {isAdmin && (
+          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #f0f0f0' }}>
+            <Typography variant="caption" color="text.secondary">
+              Usuario: {t.usuarios?.email || 'Desconocido'}
+            </Typography>
+          </Box>
+        )}
+
+      </CardContent>
+    </Card>
+  );
+};
+
 const TransferTable = ({
   loading,
   error,
@@ -66,19 +204,29 @@ const TransferTable = ({
   handleFeedback,
   handleToggleSelect,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
 
   const renderEmptyState = () => (
-    <TableRow>
-      <TableCell colSpan={isAdmin ? 8 : 6} align="center" sx={{ py: 3 }}>
+    isMobile ? (
+      <Box sx={{ textAlign: 'center', py: 4, px: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
         <Typography variant="body1" color="text.secondary">
-          {isAdmin
-            ? (tabValue === 2 ? "No hay transferencias de otros bancos cargadas." : "No se encontraron transferencias.")
-            : (tabValue === 0
-              ? "No se encontraron transferencias con esos filtros."
-              : (tabValue === 2 ? "No tienes transferencias de otros bancos pendientes de reclamo." : "Aún no tienes transferencias en tu historial."))}
+          No se encontraron resultados.
         </Typography>
-      </TableCell>
-    </TableRow>
+      </Box>
+    ) : (
+      <TableRow>
+        <TableCell colSpan={isAdmin ? 8 : 6} align="center" sx={{ py: 3 }}>
+          <Typography variant="body1" color="text.secondary">
+            {isAdmin
+              ? (tabValue === 2 ? "No hay transferencias de otros bancos cargadas." : "No se encontraron transferencias.")
+              : (tabValue === 0
+                ? "No se encontraron transferencias con esos filtros."
+                : (tabValue === 2 ? "No tienes transferencias de otros bancos pendientes de reclamo." : "Aún no tienes transferencias en tu historial."))}
+          </Typography>
+        </TableCell>
+      </TableRow>
+    )
   );
 
   const renderInitialUserState = () => (
@@ -92,7 +240,7 @@ const TransferTable = ({
   if (loading) {
     return (
       <Box sx={{ my: 4 }}>
-        <TableSkeleton numCols={isAdmin ? 8 : 5} />
+        {isMobile ? <CardSkeleton /> : <TableSkeleton numCols={isAdmin ? 8 : 5} />}
       </Box>
     );
   }
@@ -108,6 +256,39 @@ const TransferTable = ({
     return renderInitialUserState();
   }
 
+  // --- VISTA MOBILE (CARDS) ---
+  if (isMobile) {
+    if (transferencias.length === 0) return renderEmptyState();
+
+    return (
+      <Box sx={{ pb: 10 }}> {/* Padding bottom para scroll */}
+        {transferencias.map((t, idx) => (
+          <TransferCard
+            key={t.id_pago || t.id_transaccion || idx}
+            t={t}
+            isAdmin={isAdmin}
+            tabValue={tabValue}
+            session={session}
+            onClaimSuccess={handleTransferenciaClaimed}
+            onFeedback={handleFeedback}
+          />
+        ))}
+        {/* Paginación simple para mobile */}
+        <TablePagination
+          rowsPerPageOptions={[20, 50]}
+          component="div"
+          count={totalTransfers}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="Filas:"
+        />
+      </Box>
+    );
+  }
+
+  // --- VISTA DESKTOP (TABLE) ---
   return (
     <Paper elevation={0} sx={{ width: '100%', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
       <TableContainer>

@@ -645,6 +645,13 @@ function Dashboard({ session, onLogout }) {
   const handleCloseFeedback = () => setFeedback({ ...feedback, open: false });
 
   // --- RENDERIZADO DEL SIDEBAR ---
+  const theme = useTheme(); // Hook del tema
+  const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Mobile/Tablet < 900px
+
+  const handleDrawerToggle = () => {
+    setOpen(!open);
+  };
+
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: session?.user?.Area?.toLowerCase() === 'automotor' ? '#000000' : 'primary.main', color: 'white', overflowX: 'hidden' }}>
       {/* HEADER DEL SIDEBAR CON LOGO Y TOGGLE */}
@@ -652,11 +659,11 @@ function Dashboard({ session, onLogout }) {
         p: 2,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: open ? 'space-between' : 'center',
+        justifyContent: (open || isMobile) ? 'space-between' : 'center', // En mobile siempre muestra todo
         minHeight: 64,
         position: 'relative'
       }}>
-        {open ? (
+        {(open || isMobile) ? (
           <>
             <Box sx={{
               display: 'flex',
@@ -709,12 +716,13 @@ function Dashboard({ session, onLogout }) {
                 );
               })()}
             </Box>
-            <IconButton onClick={() => setOpen(false)} sx={{ color: 'white', zIndex: 1 }}>
+            {/* Botón para cerrar drawer en mobile o colapsar en desktop */}
+            <IconButton onClick={handleDrawerToggle} sx={{ color: 'white', zIndex: 1 }}>
               <ChevronLeftIcon />
             </IconButton>
           </>
         ) : (
-          <IconButton onClick={() => setOpen(true)} sx={{ color: 'white' }}>
+          <IconButton onClick={handleDrawerToggle} sx={{ color: 'white' }}>
             <MenuIcon />
           </IconButton>
         )}
@@ -726,289 +734,306 @@ function Dashboard({ session, onLogout }) {
           <>
             <ListItemButton
               selected={tabValue === 0}
-              onClick={() => handleTabChange(0)}
+              onClick={() => { handleTabChange(0); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <ListAltIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Gestión Global" />}
+              {(open || isMobile) && <ListItemText primary="Gestión Global" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 1}
-              onClick={() => handleTabChange(1)}
+              onClick={() => { handleTabChange(1); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <CheckCircleIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Historial" />}
+              {(open || isMobile) && <ListItemText primary="Historial" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 2}
-              onClick={() => handleTabChange(2)}
+              onClick={() => { handleTabChange(2); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <AccountBalanceIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Otros Bancos" />}
+              {(open || isMobile) && <ListItemText primary="Otros Bancos" />}
             </ListItemButton>
           </>
         ) : (
           <>
             <ListItemButton
               selected={tabValue === 0}
-              onClick={() => handleTabChange(0)}
+              onClick={() => { handleTabChange(0); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <SearchIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Buscar Pagos" />}
+              {(open || isMobile) && <ListItemText primary="Buscar Pagos" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 1}
-              onClick={() => handleTabChange(1)}
+              onClick={() => { handleTabChange(1); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <HistoryIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Mi Historial" />}
+              {(open || isMobile) && <ListItemText primary="Historial" />}
             </ListItemButton>
             <ListItemButton
               selected={tabValue === 2}
-              onClick={() => handleTabChange(2)}
+              onClick={() => { handleTabChange(2); if (isMobile) setOpen(false); }}
               sx={{
                 borderRadius: 2,
                 mb: 1,
-                justifyContent: open ? 'initial' : 'center',
+                justifyContent: (open || isMobile) ? 'initial' : 'center',
                 px: 2.5,
                 '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.15)' }
               }}
             >
-              <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
+              <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
                 <AccountBalanceIcon />
               </ListItemIcon>
-              {open && <ListItemText primary="Otros Bancos" />}
+              {(open || isMobile) && <ListItemText primary="Otros Bancos" />}
             </ListItemButton>
           </>
         )}
       </List>
 
-      <Box sx={{ p: 2, display: 'flex', justifyContent: open ? 'flex-start' : 'center' }}>
-        {open ? (
-          <Button
-            fullWidth
-            variant="outlined"
-            color="inherit"
-            startIcon={<LogoutIcon />}
-            onClick={onLogout}
-            sx={{ borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.05)' } }}
-          >
-            Cerrar Sesión
-          </Button>
-        ) : (
-          <IconButton onClick={onLogout} sx={{ color: 'white' }} title="Cerrar Sesión">
+      <Box sx={{ p: 2 }}>
+        <ListItemButton
+          onClick={onLogout}
+          sx={{
+            borderRadius: 2,
+            justifyContent: (open || isMobile) ? 'initial' : 'center',
+            px: 2.5,
+            bgcolor: 'rgba(0,0,0,0.2)',
+            '&:hover': { bgcolor: 'rgba(0,0,0,0.3)' }
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 0, mr: (open || isMobile) ? 2 : 'auto', justifyContent: 'center', color: 'white' }}>
             <LogoutIcon />
-          </IconButton>
-        )}
+          </ListItemIcon>
+          {(open || isMobile) && <ListItemText primary="Cerrar Sesión" />}
+        </ListItemButton>
       </Box>
     </Box>
   );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* APP BAR (Solo visible en Mobile para el botón de menú) */}
+      {isMobile && (
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div">
+              Mercurio
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      )}
 
-      {/* SIDEBAR (DRAWER) */}
-      <Drawer
-        variant="permanent"
-        open={open}
+      {/* DRAWER RESPONSIVE */}
+      <Box
+        component="nav"
+        sx={{ width: { md: open ? drawerWidth : closedDrawerWidth }, flexShrink: { md: 0 } }}
+        aria-label="mailbox folders"
+      >
+        {/* Mobile Drawer (Temporary) */}
+        <Drawer
+          variant="temporary"
+          open={open && isMobile}
+          onClose={handleDrawerToggle}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile.
+          }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+
+        {/* Desktop Drawer (Permanent) */}
+        <Drawer
+          variant="permanent"
+          open={open}
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: open ? drawerWidth : closedDrawerWidth,
+              transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              overflowX: 'hidden',
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
+
+      {/* MAIN CONTENT */}
+      <Box
+        component="main"
         sx={{
-          width: open ? drawerWidth : closedDrawerWidth,
-          flexShrink: 0,
-          whiteSpace: 'nowrap',
-          boxSizing: 'border-box',
-          transition: theme => theme.transitions.create('width', {
+          flexGrow: 1,
+          p: 3,
+          width: { md: `calc(100% - ${open ? drawerWidth : closedDrawerWidth}px)` },
+          transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
           }),
-          [`& .MuiDrawer-paper`]: {
-            width: open ? drawerWidth : closedDrawerWidth,
-            overflowX: 'hidden',
-            transition: theme => theme.transitions.create('width', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-            border: 'none'
-          },
+          mt: isMobile ? 8 : 0 // Margen superior en mobile por el AppBar
         }}
       >
-        {drawerContent}
-      </Drawer>
+        {/* Toolbar spacer para desktop si fuera necesario, pero aquí lo manejamos con mt en mobile */}
 
-      {/* MAIN CONTENT */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${open ? drawerWidth : closedDrawerWidth}px)` }, transition: 'width 0.3s' }}>
+        {/* CONTENIDO PRINCIPAL */}
+        <Container maxWidth="xl" disableGutters>
+          {/* ... resto del contenido ... */}
 
-        {/* HEADER (APPBAR SIMPLIFICADO) */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Box>
-            <Typography variant="h5" fontWeight="bold" color="text.primary">
-              {isAdmin
-                ? (tabValue === 2 ? 'Otros Bancos (Manual)' : (tabValue === 0 ? 'Gestión Global' : 'Historial de Pagos'))
-                : (tabValue === 0 ? 'Búsqueda de Pagos' : (tabValue === 2 ? 'Mis Reclamos Pendientes' : 'Mis Transferencias'))}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Bienvenido, {session.user.email}
-            </Typography>
+          {/* Título y Bienvenida */}
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 800, letterSpacing: '-1px', color: 'text.primary' }}>
+                {isAdmin ? 'Panel de Control' : 'Mis Transferencias'}
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary">
+                Bienvenido, {session?.user?.email}
+              </Typography>
+            </Box>
+
+            {/* Avatar y Notificaciones */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* ... (código existente de notificaciones) ... */}
+              {!isAdmin && (
+                <>
+                  <IconButton color="primary" onClick={handleMenuOpen}>
+                    <Badge badgeContent={notificaciones.length} color="error">
+                      <NotificationsIcon />
+                    </Badge>
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                  >
+                    {notificaciones.length === 0 ? (
+                      <MenuItem onClick={handleMenuClose}>Sin notificaciones nuevas</MenuItem>
+                    ) : (
+                      [
+                        <MenuItem key="clear" onClick={handleClearNotifications} sx={{ justifyContent: 'center', color: 'primary.main', fontWeight: 'bold' }}>
+                          Limpiar Todo
+                        </MenuItem>,
+                        ...notificaciones.map((n, index) => (
+                          <MenuItem key={index} onClick={handleMenuClose}>
+                            {n.mensaje}
+                          </MenuItem>
+                        ))
+                      ]
+                    )}
+                  </Menu>
+                </>
+              )}
+              <Avatar sx={{ bgcolor: 'secondary.main', width: 48, height: 48, boxShadow: '0px 4px 10px rgba(0,0,0,0.1)' }}>
+                {session?.user?.email?.charAt(0).toUpperCase()}
+              </Avatar>
+            </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {!isAdmin && (
-              <>
-                <IconButton onClick={handleMenuOpen}>
-                  <Badge badgeContent={notificaciones.length} color="error">
-                    <NotificationsIcon color="action" />
-                  </Badge>
-                </IconButton>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleMenuClose}
-                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                >
-                  {notificaciones.length === 0 ? (
-                    <MenuItem disabled>No tienes notificaciones nuevas</MenuItem>
-                  ) : (
-                    notificaciones.map((notif) => (
-                      <MenuItem key={notif.id} onClick={handleMenuClose}>
-                        <ListItemText
-                          primary={`Nueva transferencia de ${notif.banco}`}
-                          secondary={`Monto: $${parseFloat(notif.monto).toLocaleString('es-AR')}`}
-                        />
-                      </MenuItem>
-                    ))
-                  )}
-                  {notificaciones.length > 0 && (
-                    <Box>
-                      <Divider />
-                      <MenuItem onClick={handleClearNotifications}>
-                        <ListItemText primary="Limpiar notificaciones" sx={{ color: 'text.secondary', textAlign: 'center' }} />
-                      </MenuItem>
-                    </Box>
-                  )}
-                </Menu>
-              </>
-            )}
-            {isAdmin && (
-              <IconButton>
-                <NotificationsIcon color="action" />
-              </IconButton>
-            )}
-            <Avatar sx={{ bgcolor: 'secondary.main' }}>
-              {session.user.email[0].toUpperCase()}
-            </Avatar>
-          </Box>
-        </Box>
-
-        {/* CONTENIDO PRINCIPAL (TARJETAS Y TABLAS) */}
-
-        {/* REORDENAMIENTO: FILTROS PRIMERO */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-
-          {/* 1. FILTROS */}
-          <Paper sx={{ p: 3 }}>
-            <TransferFilters
-              isAdmin={isAdmin}
-              tabValue={tabValue}
-              montoFilter={montoFilter} setMontoFilter={setMontoFilter}
-              fechaFilter={fechaFilter} setFechaFilter={setFechaFilter}
-              adminUserFilter={adminUserFilter} setAdminUserFilter={setAdminUserFilter}
-              dateFromFilter={dateFromFilter} setDateFromFilter={setDateFromFilter}
-              dateToFilter={dateToFilter} setDateToFilter={setDateToFilter}
-              bankFilter={bankFilter} handleBankFilterChange={handleBankFilterChange}
-              claimStatusFilter={claimStatusFilter} setClaimStatusFilter={setClaimStatusFilter}
-              handleSearchSubmit={handleSearchSubmit}
-              handleExportPDF={handleExportPDF}
-              transferenciasCount={transferencias.length}
-            />
-          </Paper>
-
-          {/* 2. TOTALES Y ACCIONES (AHORA ABAJO DE FILTROS) */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            {/* BOTÓN CARGAR (Solo en Admin Tab 2) */}
-            {isAdmin && tabValue === 2 && (
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<AddCircleOutlineIcon />}
-                onClick={() => setOpenManualModal(true)}
-              >
-                Cargar Transferencia
-              </Button>
-            )}
-
-            <StatsCards
-              isAdmin={isAdmin}
-              selectedIds={selectedIds}
-              totalSelectedAmount={totalSelectedAmount}
-              totalAmount={totalAmount}
-            />
-          </Box>
-
-          {/* BOTÓN DE CONFIRMAR MASIVO (SOLO ADMIN TAB 0) */}
-          {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
-            <Alert severity="info" sx={{ alignItems: 'center', borderRadius: 2 }}
-              action={
-                <Button
-                  color="success"
-                  variant="contained"
-                  size="small"
-                  onClick={handleBatchConfirm}
-                  disabled={isConfirming}
-                  startIcon={<DoneAllIcon />}
-                >
-                  {isConfirming ? 'Procesando...' : `Confirmar (${selectedIds.length})`}
-                </Button>
-              }
-            >
-              Has seleccionado <strong>{selectedIds.length}</strong> transferencias. Haz clic en confirmar para archivarlas.
-            </Alert>
+          {/* Stats Cards (Solo Admin Tab 0) */}
+          {isAdmin && tabValue === 0 && (
+            <StatsCards totalTransfers={totalTransfers} totalAmount={totalAmount} />
           )}
 
-          {/* 3. TABLA */}
+          {/* Filtros */}
+          <TransferFilters
+            isAdmin={isAdmin}
+            tabValue={tabValue}
+            montoFilter={montoFilter} setMontoFilter={setMontoFilter}
+            fechaFilter={fechaFilter} setFechaFilter={setFechaFilter}
+            adminUserFilter={adminUserFilter} setAdminUserFilter={setAdminUserFilter}
+            dateFromFilter={dateFromFilter} setDateFromFilter={setDateFromFilter}
+            dateToFilter={dateToFilter} setDateToFilter={setDateToFilter}
+            bankFilter={bankFilter} handleBankFilterChange={handleBankFilterChange}
+            claimStatusFilter={claimStatusFilter} setClaimStatusFilter={setClaimStatusFilter}
+            handleSearchSubmit={handleSearchSubmit}
+            handleExportPDF={handleExportPDF}
+            transferenciasCount={transferencias.length}
+          />
+
+          {/* Acciones Masivas (Solo Admin Tab 0) */}
+          {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
+            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd', border: '1px solid #90caf9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body1" color="primary.dark" fontWeight="bold">
+                  {selectedIds.length} seleccionados
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total: ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<CheckCircleIcon />}
+                onClick={handleBatchConfirm}
+                disabled={isConfirming}
+              >
+                {isConfirming ? 'Procesando...' : 'Confirmar Selección'}
+              </Button>
+            </Paper>
+          )}
+
+          {/* Tabla de Transferencias */}
           <TransferTable
             loading={loading}
             error={error}
@@ -1028,58 +1053,57 @@ function Dashboard({ session, onLogout }) {
             handleFeedback={handleFeedback}
             handleToggleSelect={handleToggleSelect}
           />
-        </Box>
+          <ManualTransferModal
+            open={openManualModal}
+            onClose={() => setOpenManualModal(false)}
+            manualData={manualData}
+            handleManualChange={handleManualChange}
+            handleSubmitManual={handleSubmitManual}
+            loadingManual={loadingManual}
+            usersList={usersList}
+          />
 
+        </Container>
+
+        {/* MODAL DE CONFIRMACIÓN MASIVA */}
+        <Dialog
+          open={openConfirmDialog}
+          onClose={() => setOpenConfirmDialog(false)}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">
+            {"Confirmar Acción"}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description">
+              Estás a punto de confirmar <strong>{selectedIds.length}</strong> transferencias.
+              <br />
+              El monto total seleccionado es:
+              <br />
+              <Typography component="span" variant="h5" color="success.main" fontWeight="bold">
+                ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              </Typography>
+              <br /><br />
+              Estas transferencias desaparecerán de la lista de pendientes y pasarán al historial. ¿Deseas continuar?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenConfirmDialog(false)} color="inherit">
+              Cancelar
+            </Button>
+            <Button onClick={executeBatchConfirm} variant="contained" color="success" autoFocus>
+              Confirmar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
+          <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
+            {feedback.message}
+          </Alert>
+        </Snackbar>
       </Box>
-
-      <ManualTransferModal
-        open={openManualModal}
-        onClose={() => setOpenManualModal(false)}
-        manualData={manualData}
-        handleManualChange={handleManualChange}
-        handleSubmitManual={handleSubmitManual}
-        loadingManual={loadingManual}
-        usersList={usersList}
-      />
-
-      {/* MODAL DE CONFIRMACIÓN MASIVA */}
-      <Dialog
-        open={openConfirmDialog}
-        onClose={() => setOpenConfirmDialog(false)}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          {"Confirmar Acción"}
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Estás a punto de confirmar <strong>{selectedIds.length}</strong> transferencias.
-            <br />
-            El monto total seleccionado es:
-            <br />
-            <Typography component="span" variant="h5" color="success.main" fontWeight="bold">
-              ${totalSelectedAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-            </Typography>
-            <br /><br />
-            Estas transferencias desaparecerán de la lista de pendientes y pasarán al historial. ¿Deseas continuar?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenConfirmDialog(false)} color="inherit">
-            Cancelar
-          </Button>
-          <Button onClick={executeBatchConfirm} variant="contained" color="success" autoFocus>
-            Confirmar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar open={feedback.open} autoHideDuration={3000} onClose={handleCloseFeedback}>
-        <Alert onClose={handleCloseFeedback} severity={feedback.severity} sx={{ width: '100%' }}>
-          {feedback.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
