@@ -689,8 +689,8 @@ function Dashboard({ session, onLogout }) {
                       alt="Logo"
                       sx={{
                         height: 'auto',
-                        maxHeight: 60,
-                        maxWidth: 180,
+                        maxHeight: 50,
+                        maxWidth: 130,
                         width: 'auto',
                         objectFit: 'contain'
                       }}
@@ -867,7 +867,7 @@ function Dashboard({ session, onLogout }) {
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap component="div">
+            <Typography variant="h6" noWrap component="div" sx={{ color: 'white' }}>
               Mercurio
             </Typography>
           </Toolbar>
