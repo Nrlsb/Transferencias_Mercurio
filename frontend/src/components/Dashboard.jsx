@@ -980,9 +980,12 @@ function Dashboard({ session, onLogout }) {
                         </MenuItem>,
                         ...notificaciones.map((n, index) => (
                           <MenuItem key={index} onClick={handleMenuClose}>
-                            <Typography variant="body2" color="text.primary">
-                              {n.mensaje}
-                            </Typography>
+                            <ListItemText
+                              primary={`Nueva transferencia de ${n.banco || 'Desconocido'}`}
+                              secondary={`Monto: $${n.monto ? parseFloat(n.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '0,00'}`}
+                              primaryTypographyProps={{ variant: 'body2', color: 'text.primary', fontWeight: 'bold' }}
+                              secondaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                            />
                           </MenuItem>
                         ))
                       ]
