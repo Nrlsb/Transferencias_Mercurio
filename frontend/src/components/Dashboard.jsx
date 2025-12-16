@@ -38,6 +38,8 @@ import {
   Badge,
   Menu,
   MenuItem,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import HistoryIcon from '@mui/icons-material/History';
