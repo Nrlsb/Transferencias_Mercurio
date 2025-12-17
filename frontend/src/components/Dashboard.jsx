@@ -1020,6 +1020,20 @@ function Dashboard({ session, onLogout }) {
             transferenciasCount={transferencias.length}
           />
 
+          {/* Botón Nueva Transferencia Manual (Solo Admin Tab 2) */}
+          {isAdmin && tabValue === 2 && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AddCircleOutlineIcon />}
+                onClick={() => setOpenManualModal(true)}
+              >
+                Nueva Transferencia
+              </Button>
+            </Box>
+          )}
+
           {/* Acciones Masivas (Solo Admin Tab 0) */}
           {isAdmin && tabValue === 0 && selectedIds.length > 0 && (
             <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd', border: '1px solid #90caf9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
