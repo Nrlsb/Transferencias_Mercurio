@@ -40,7 +40,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL, // Tu URL de Vercel (definida en .env)
   'http://localhost:3000',     // O el puerto que uses para desarrollo local
   'https://transferencias-mercurio.vercel.app',
-  'https://transferencias-mercurio.onrender.com' // Self-reference sometimes helps
+  'https://transferencias-mercurio-j4mf.onrender.com' // Self-reference sometimes helps
 ].filter(Boolean); // Filtra valores no definidos
 
 app.use(cors({
