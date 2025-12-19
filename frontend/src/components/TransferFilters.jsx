@@ -60,8 +60,8 @@ const TransferFilters = ({
     setExpanded(!expanded);
   };
 
-  // El formulario de filtros no se muestra en la pestaña de "Otros Bancos" del Admin
-  if (isAdmin && tabValue === 2) {
+  // El formulario de filtros NO se muestra en la pestaña de "Otros Bancos" (Tab 2) SOLO si NO es admin.
+  if (!isAdmin && tabValue === 2) {
     return null;
   }
 
