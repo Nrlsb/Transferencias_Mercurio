@@ -238,6 +238,7 @@ function Dashboard({ session, onLogout }) {
   }, [isAdmin]);
 
   const handleTabChange = (newValue) => {
+    if (newValue === tabValue) return;
     setTabValue(newValue);
     setError(null);
     setTransferencias([]);
