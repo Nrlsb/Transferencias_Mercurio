@@ -17,37 +17,38 @@ const port = process.env.PORT || 3000;
 
 // --- SEGURIDAD ---
 
-// Helmet: Configura cabeceras HTTP seguras (anti-XSS, anti-sniff, etc.)
-app.use(helmet());
+// Helmet: Configura cabeceras HTTP seguras
+// Se ajusta crossOriginResourcePolicy para evitar conflictos con CORS en algunos navegadores
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// Rate Limiting: Limita peticiones repetidas para prevenir fuerza bruta y DoS
+// Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Limita a 100 peticiones por IP por ventana
-  standardHeaders: true, // Retorna info de rate limit en las cabeceras `RateLimit-*`
-  legacyHeaders: false, // Deshabilita las cabeceras `X-RateLimit-*`
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: "Demasiadas peticiones desde esta IP, por favor intente nuevamente en 15 minutos." }
 });
 
-// Aplicar rate limiting globalmente (o podrías aplicarlo solo a /api/auth)
 app.use(limiter);
 
 // --- MIDDLEWARES BASE ---
 
-// Configuración CORS más segura
-// Configuración CORS más segura
+// Configuración CORS corregida
 const allowedOrigins = [
-  process.env.FRONTEND_URL, // Tu URL de Vercel (definida en .env)
-  'http://localhost:3000',     // O el puerto que uses para desarrollo local
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:5173', // Añadido puerto común de Vite (desarrollo)
   'https://transferencias-mercurio.vercel.app',
-  'https://transferencias-mercurio-j4mf.onrender.com' // Self-reference sometimes helps
-].filter(Boolean); // Filtra valores no definidos
+  'https://transferencias-mercurio-j4mf.onrender.com'
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permite peticiones sin origin (como Postman) y las de la lista
-    console.log("Origin request:", origin); // LOG PARA DEBUGGING
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Si no hay origin (como en apps móviles o Postman) o está en la lista blanca
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.error("CORS Blocked Origin:", origin);
@@ -56,18 +57,30 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: true // Permite el envío de cookies y cabeceras de autorización
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204 // Importante para navegadores antiguos o específicos
 }));
 
-app.use(express.json({ limit: '10kb' })); // Limita el tamaño del body para prevenir ataques de payload grande
+// Middleware adicional para asegurar que las cabeceras se envíen en cada respuesta
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
+
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // --- RUTAS ---
-app.use('/api/auth', authRoutes); // Nuevas rutas de auth
-app.use('/api/notificaciones', notificacionRoutes); // Nuevas rutas de notificaciones
+app.use('/api/auth', authRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 app.use('/', transferenciaRoutes);
 
-// Manejo de errores global (Evita filtrar stack traces al cliente)
+// Manejo de errores global
 app.use((err, req, res, next) => {
   console.error("🔥 Error no controlado:", err.stack);
   res.status(500).json({ error: 'Ocurrió un error interno en el servidor.' });
@@ -75,5 +88,5 @@ app.use((err, req, res, next) => {
 
 // Inicio del servidor
 app.listen(port, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
+  console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
