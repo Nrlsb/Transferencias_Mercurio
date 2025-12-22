@@ -362,6 +362,43 @@ class TransferenciaService {
         if (updateError) throw new Error(updateError.message);
         return true;
     }
+
+    // --- WEBHOOK (MERCADO PAGO) ---
+    async createTransferenciaFromWebhook(paymentData) {
+        // Solo procesamos si tenemos un ID
+        if (!paymentData || !paymentData.id) {
+            throw new Error("Datos de pago inválidos (falta ID)");
+        }
+
+        // Mapeo de datos
+        const transferData = {
+            id_pago: paymentData.id.toString(),
+            monto: paymentData.transaction_amount,
+            fecha_aprobado: paymentData.date_approved, // Puede ser null si no está aprobado
+            status: paymentData.status,
+            status_detail: paymentData.status_detail,
+            payment_method_id: paymentData.payment_method_id,
+            payment_type_id: paymentData.payment_type_id,
+            payer_email: paymentData.payer?.email || null,
+            payer_id: paymentData.payer?.id || null,
+            description: paymentData.description || null,
+            external_reference: paymentData.external_reference || null,
+            money_release_date: paymentData.money_release_date || null
+        };
+
+        // Upsert: Si ya existe (por ID), se actualiza. Si no, se crea.
+        const { data, error } = await supabase
+            .from('transferencias')
+            .upsert(transferData, { onConflict: 'id_pago' })
+            .select();
+
+        if (error) {
+            console.error("❌ Error guardando transferencia MP en DB:", error.message);
+            throw new Error(error.message);
+        }
+
+        return data ? data[0] : null;
+    }
 }
 
 module.exports = new TransferenciaService();
