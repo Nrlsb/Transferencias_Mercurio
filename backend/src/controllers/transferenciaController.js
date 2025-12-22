@@ -92,10 +92,10 @@ const getMyManualTransfers = async (req, res) => {
 const createManualTransfer = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
-    const { id_transaccion, banco, monto, userId } = req.body;
+    const { id_transaccion, banco, monto, userId, fecha_real } = req.body;
     if (!id_transaccion || !banco || !monto || !userId) return res.status(400).json({ error: "Todos los campos son obligatorios." });
 
-    const result = await transferenciaService.createManualTransfer({ id_transaccion, banco, monto, userId });
+    const result = await transferenciaService.createManualTransfer({ id_transaccion, banco, monto, userId, fecha_real });
     res.status(201).json({ message: "Transferencia manual creada exitosamente.", data: result });
   } catch (error) {
     console.error("❌ Error en createManualTransfer:", error.message);
@@ -136,9 +136,9 @@ const updateManualTransfer = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
     const { id } = req.params;
-    const { banco, monto, userId } = req.body;
+    const { banco, monto, userId, fecha_real } = req.body;
 
-    const result = await transferenciaService.updateManualTransfer(id, { banco, monto, userId });
+    const result = await transferenciaService.updateManualTransfer(id, { banco, monto, userId, fecha_real });
     res.status(200).json({ message: "Transferencia actualizada exitosamente.", data: result });
   } catch (error) {
     console.error("❌ Error en updateManualTransfer:", error.message);
