@@ -284,7 +284,7 @@ class TransferenciaService {
         const updateData = {};
         if (banco) updateData.banco = banco;
         if (monto) updateData.monto = parseFloat(monto);
-        if (userId) updateData.user_id = userId;
+        if (userId !== undefined) updateData.user_id = userId || null;
         if (fecha_real) updateData.fecha_real = fecha_real;
 
         const { data, error } = await supabase
@@ -303,7 +303,7 @@ class TransferenciaService {
             p_id_transaccion: id_transaccion,
             p_banco: banco,
             p_monto: parseFloat(monto), // Asegurarse de que el tipo sea NUMERIC/FLOAT en la DB
-            p_user_id: userId,
+            p_user_id: userId || null,
             p_fecha_real: fecha_real || null
         });
 

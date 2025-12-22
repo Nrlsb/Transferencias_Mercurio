@@ -618,7 +618,7 @@ function Dashboard({ session, onLogout }) {
           t.id_transaccion,
           t.banco,
           fechaFormatted,
-          t.usuarios?.email || 'N/A',
+          t.usuarios?.email || 'Libre',
           montoFormatted
         ];
       });

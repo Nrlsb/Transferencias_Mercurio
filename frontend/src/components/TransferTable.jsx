@@ -356,7 +356,7 @@ const TransferTable = ({
                         ? new Date(t.fecha_real).toLocaleDateString() + ' ' + new Date(t.fecha_real).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         : '-'}
                     </TableCell>
-                    <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
+                    <TableCell>{t.usuarios?.email || 'Libre'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell align="center">
                       <IconButton size="small" onClick={() => handleEdit(t)}>

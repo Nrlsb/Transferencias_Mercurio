@@ -93,7 +93,7 @@ const createManualTransfer = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
     const { id_transaccion, banco, monto, userId, fecha_real } = req.body;
-    if (!id_transaccion || !banco || !monto || !userId) return res.status(400).json({ error: "Todos los campos son obligatorios." });
+    if (!id_transaccion || !banco || !monto) return res.status(400).json({ error: "Todos los campos son obligatorios (excepto cliente)." });
 
     const result = await transferenciaService.createManualTransfer({ id_transaccion, banco, monto, userId, fecha_real });
     res.status(201).json({ message: "Transferencia manual creada exitosamente.", data: result });
