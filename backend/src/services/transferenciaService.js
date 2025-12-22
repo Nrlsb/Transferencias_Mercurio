@@ -371,6 +371,8 @@ class TransferenciaService {
         }
 
         // Mapeo de datos
+        // NOTA: Se eliminaron campos opcionales (description, external_reference, money_release_date)
+        // porque no existen en la tabla 'transferencias' actual y causaban error.
         const transferData = {
             id_pago: paymentData.id.toString(),
             monto: paymentData.transaction_amount,
@@ -380,10 +382,7 @@ class TransferenciaService {
             payment_method_id: paymentData.payment_method_id,
             payment_type_id: paymentData.payment_type_id,
             payer_email: paymentData.payer?.email || null,
-            payer_id: paymentData.payer?.id || null,
-            description: paymentData.description || null,
-            external_reference: paymentData.external_reference || null,
-            money_release_date: paymentData.money_release_date || null
+            payer_id: paymentData.payer?.id || null
         };
 
         // Upsert: Si ya existe (por ID), se actualiza. Si no, se crea.
