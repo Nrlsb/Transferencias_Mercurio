@@ -43,8 +43,7 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-// Habilitar pre-flight para todas las rutas
-app.options('*', cors());
+
 
 // --- SEGURIDAD ---
 
