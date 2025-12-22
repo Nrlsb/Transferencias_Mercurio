@@ -251,6 +251,16 @@ class TransferenciaService {
         return data;
     }
 
+    async getAllUsers() {
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('id, email')
+            .order('email', { ascending: true });
+
+        if (error) throw new Error(error.message);
+        return data;
+    }
+
     async getManualTransfersByUserId(userId, onlyUnclaimed = false) {
         // Este método lo usa el usuario para "Mis Transferencias Manuales"
         let query = supabase
