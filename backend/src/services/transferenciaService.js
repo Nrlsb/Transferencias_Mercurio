@@ -240,9 +240,18 @@ class TransferenciaService {
     }
 
     async createTransferenciaFromWebhook(paymentDetails) {
-        // FILTRO: Solo guardar si es transferencia bancaria
-        if (paymentDetails.payment_type_id !== 'bank_transfer') {
-            console.log(`⚠️ Pago ignorado: Tipo ${paymentDetails.payment_type_id} no es 'bank_transfer'.`);
+        // FILTRO: Guardar transferencias bancarias y dinero en cuenta (MP a MP), pero EXCLUIR QR
+        const isBankTransfer = paymentDetails.payment_type_id === 'bank_transfer';
+        const isAccountMoney = paymentDetails.payment_type_id === 'account_money';
+        const isQR = paymentDetails.point_of_interaction?.type === 'QR_CODE';
+
+        if (!isBankTransfer && !isAccountMoney) {
+            console.log(`⚠️ Pago ignorado: Tipo ${paymentDetails.payment_type_id} no es 'bank_transfer' ni 'account_money'.`);
+            return false;
+        }
+
+        if (isQR) {
+            console.log(`⚠️ Pago ignorado: Es un pago con QR (point_of_interaction.type = QR_CODE).`);
             return false;
         }
 
