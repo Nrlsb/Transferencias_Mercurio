@@ -289,7 +289,23 @@ const Transferencia = ({
         {isManual ? (
           <Chip label={transferencia.banco} size="small" color={isUsedByMe ? "success" : "primary"} variant="outlined" />
         ) : (
-          <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{displayDescription}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+            <Chip
+              label="Mercado Pago"
+              size="small"
+              sx={{
+                bgcolor: '#009EE3',
+                color: 'white',
+                fontWeight: 'bold',
+                height: 20,
+                fontSize: '0.7rem',
+                '&:hover': { bgcolor: '#008AC6' }
+              }}
+            />
+            <Typography variant="body2" sx={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+              {displayDescription}
+            </Typography>
+          </Box>
         )}
       </TableCell>
 
