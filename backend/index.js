@@ -59,18 +59,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   credentials: true,
   preflightContinue: false,
-  optionsSuccessStatus: 204 // Importante para navegadores antiguos o específicos
+  optionsSuccessStatus: 204
 }));
-
-// Middleware adicional para asegurar que las cabeceras se envíen en cada respuesta
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-  res.header("Access-Control-Allow-Credentials", "true");
-  next();
-});
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
