@@ -16,6 +16,7 @@ import {
 import espintLogo from '../assets/espintBlanco.svg';
 import casaPintorLogo from '../assets/casaDelPintorBlanco.svg';
 import automotorLogo from '../assets/automotorBlanco.svg';
+import mercurioLogo from '../assets/mercurioLogin.svg';
 
 // Recibimos la función setToken desde App.jsx para actualizar el estado global
 export default function Auth({ onLoginSuccess }) {
@@ -104,9 +105,7 @@ export default function Auth({ onLoginSuccess }) {
         <Card sx={{ width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', borderRadius: 4 }}>
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 4 }}>
             <Box sx={{ mb: 4, textAlign: 'center' }}>
-              <Typography component="h1" variant="h4" fontWeight="800" color="primary" gutterBottom sx={{ letterSpacing: '-0.5px' }}>
-                Mercurio
-              </Typography>
+              <Box component="img" src={mercurioLogo} alt="Mercurio" sx={{ height: 60, mb: 2 }} />
               <Typography component="h2" variant="subtitle1" color="text.secondary" fontWeight="500">
                 Gestión de Transferencias
               </Typography>
