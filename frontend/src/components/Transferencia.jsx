@@ -306,6 +306,15 @@ const Transferencia = ({
       {/* 4. FECHA (Todos) */}
       <TableCell>{formattedDate}</TableCell>
 
+      {/* 4.5 FECHA REAL (Solo Admin) */}
+      {isAdmin && (
+        <TableCell>
+          {transferencia.fecha_real
+            ? new Date(transferencia.fecha_real).toLocaleDateString() + ' ' + new Date(transferencia.fecha_real).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '-'}
+        </TableCell>
+      )}
+
       {/* 5. ESTADO (Todos) */}
       <TableCell>
         <Chip

@@ -110,7 +110,8 @@ function Dashboard({ session, onLogout }) {
     id_transaccion: '',
     banco: '',
     monto: '',
-    userId: ''
+    userId: '',
+    fecha_real: ''
   });
   const [loadingManual, setLoadingManual] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -465,7 +466,8 @@ function Dashboard({ session, onLogout }) {
       id_transaccion: transfer.id_transaccion,
       banco: transfer.banco,
       monto: transfer.monto,
-      userId: transfer.usuarios?.id || '' // Asumiendo que el objeto usuario viene populado
+      userId: transfer.usuarios?.id || '', // Asumiendo que el objeto usuario viene populado
+      fecha_real: transfer.fecha_real ? new Date(transfer.fecha_real).toISOString().slice(0, 16) : ''
     });
     setOriginalId(transfer.id_transaccion);
     setIsEditing(true);
@@ -494,7 +496,8 @@ function Dashboard({ session, onLogout }) {
         'success'
       );
       setOpenManualModal(false);
-      setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' }); // Reset
+      setOpenManualModal(false);
+      setManualData({ id_transaccion: '', banco: '', monto: '', userId: '', fecha_real: '' }); // Reset
       setOriginalId(null);
       setIsEditing(false);
       fetchManualTransfersAdmin(); // Recargar tabla

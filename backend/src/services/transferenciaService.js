@@ -280,11 +280,12 @@ class TransferenciaService {
         return data;
     }
 
-    async updateManualTransfer(idTransaccion, { banco, monto, userId }) {
+    async updateManualTransfer(idTransaccion, { banco, monto, userId, fecha_real }) {
         const updateData = {};
         if (banco) updateData.banco = banco;
         if (monto) updateData.monto = parseFloat(monto);
         if (userId) updateData.user_id = userId;
+        if (fecha_real) updateData.fecha_real = fecha_real;
 
         const { data, error } = await supabase
             .from('transferencias_manuales')
@@ -296,13 +297,14 @@ class TransferenciaService {
         return data[0];
     }
 
-    async createManualTransfer({ id_transaccion, banco, monto, userId }) {
+    async createManualTransfer({ id_transaccion, banco, monto, userId, fecha_real }) {
         // Llama a la función RPC (Remote Procedure Call) de Supabase para ejecutar la función de base de datos.
         const { data, error } = await supabase.rpc('create_manual_transfer_atomic', {
             p_id_transaccion: id_transaccion,
             p_banco: banco,
             p_monto: parseFloat(monto), // Asegurarse de que el tipo sea NUMERIC/FLOAT en la DB
-            p_user_id: userId
+            p_user_id: userId,
+            p_fecha_real: fecha_real
         });
 
         if (error) {

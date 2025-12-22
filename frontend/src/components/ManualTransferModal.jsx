@@ -54,6 +54,18 @@ const ManualTransferModal = ({
           </FormControl>
 
           <TextField
+            label="Fecha Real"
+            name="fecha_real"
+            type="datetime-local"
+            fullWidth
+            value={manualData.fecha_real}
+            onChange={handleManualChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+
+          <TextField
             label="Monto"
             name="monto"
             type="number"

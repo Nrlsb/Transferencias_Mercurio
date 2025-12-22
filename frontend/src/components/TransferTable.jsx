@@ -303,6 +303,7 @@ const TransferTable = ({
                   <TableCell>ID Transacción</TableCell>
                   <TableCell>Banco</TableCell>
                   <TableCell>Fecha Carga</TableCell>
+                  <TableCell>Fecha Real</TableCell>
                   <TableCell>Cliente Asignado</TableCell>
                   <TableCell align="right">Monto</TableCell>
                   <TableCell align="center">Acciones</TableCell>
@@ -323,6 +324,7 @@ const TransferTable = ({
                   <TableCell>ID / Ref</TableCell>
                   <TableCell>Descripción / Banco</TableCell>
                   <TableCell>Fecha</TableCell>
+                  {isAdmin && <TableCell>Fecha Real</TableCell>}
                   <TableCell>Estado</TableCell>
                   {!isAdmin && tabValue === 1 && (
                     <TableCell>Fecha Reclamo</TableCell>
@@ -349,6 +351,11 @@ const TransferTable = ({
                     <TableCell>{t.id_transaccion}</TableCell>
                     <TableCell><Chip label={t.banco} color="primary" variant="outlined" size="small" /></TableCell>
                     <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
+                    <TableCell>
+                      {t.fecha_real
+                        ? new Date(t.fecha_real).toLocaleDateString() + ' ' + new Date(t.fecha_real).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : '-'}
+                    </TableCell>
                     <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell align="center">
