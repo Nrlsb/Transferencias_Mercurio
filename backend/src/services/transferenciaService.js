@@ -370,19 +370,15 @@ class TransferenciaService {
             throw new Error("Datos de pago inválidos (falta ID)");
         }
 
-        // Mapeo de datos
-        // NOTA: Se eliminaron campos opcionales (description, external_reference, money_release_date)
-        // porque no existen en la tabla 'transferencias' actual y causaban error.
+        // Mapeo de datos SEGÚN SCHEMA REAL (Español)
         const transferData = {
-            id_pago: paymentData.id.toString(),
+            id_pago: paymentData.id, // int8
             monto: paymentData.transaction_amount,
-            fecha_aprobado: paymentData.date_approved, // Puede ser null si no está aprobado
-            status: paymentData.status,
-            status_detail: paymentData.status_detail,
-            payment_method_id: paymentData.payment_method_id,
-            payment_type_id: paymentData.payment_type_id,
-            payer_email: paymentData.payer?.email || null,
-            payer_id: paymentData.payer?.id || null
+            fecha_aprobado: paymentData.date_approved,
+            estado: paymentData.status, // columna 'estado'
+            descripcion: paymentData.description || null, // columna 'descripcion'
+            email_pagador: paymentData.payer?.email || null, // columna 'email_pagador'
+            datos_completos: paymentData // columna 'datos_completos' (jsonb)
         };
 
         // Upsert: Si ya existe (por ID), se actualiza. Si no, se crea.
