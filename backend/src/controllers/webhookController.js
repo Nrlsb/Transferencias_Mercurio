@@ -10,12 +10,12 @@ const payment = new Payment(client);
 
 const handleWebhook = async (req, res) => {
   // Respondemos 200 OK inmediatamente para que Mercado Pago sepa que recibimos el aviso
-  res.sendStatus(200); 
+  res.sendStatus(200);
 
   try {
     const body = req.body || {};
     const query = req.query || {};
-    
+
     // LOG 1: Ver qué nos está mandando el IPN o Webhook
     console.log("🔔 [IPN/Webhook] Notificación entrante:");
     console.log("   👉 Query Params (IPN usa esto):", JSON.stringify(query, null, 2));
@@ -32,42 +32,71 @@ const handleWebhook = async (req, res) => {
       paymentId = query.id;
       source = "IPN (Query)";
     } else if (body.topic === "payment" && body.resource) {
-       // A veces IPN manda en body resource: '/v1/payments/123'
-       const parts = body.resource.split("/");
-       paymentId = parts[parts.length - 1];
-       source = "IPN (Body)";
+      // A veces IPN manda en body resource: '/v1/payments/123'
+      const parts = body.resource.split("/");
+      paymentId = parts[parts.length - 1];
+      source = "IPN (Body)";
     }
 
     if (paymentId) {
       console.log(`🚀 Procesando ID: ${paymentId} (Fuente: ${source})`);
-      
+
       // Esperamos 3 segundos para dar tiempo a MP a replicar datos en sus bases
       // Esto es crucial para intentar capturar el nombre si viene con delay
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
       console.log(`🔎 Consultando API de Mercado Pago para ID: ${paymentId}...`);
-      
+
       // Consultamos la API para obtener el objeto completo
       const paymentDetails = await payment.get({ id: paymentId });
-      
+
       // LOG 2: AQUÍ VEMOS LA VERDAD. 
       // Este log te mostrará el JSON completo que MP nos devuelve.
       // Busca aquí "payer", "first_name", "last_name" o "bank_info".
       console.log("📦 [API RESPONSE] Datos completos del pago:");
       console.log(JSON.stringify(paymentDetails, null, 2));
-      
+
       console.log(`💾 Guardando/Actualizando pago en base de datos...`);
       await transferenciaService.createTransferenciaFromWebhook(paymentDetails);
       console.log("✅ Pago procesado exitosamente.");
     } else {
-        console.log("⚠️ Se recibió una notificación pero no se pudo extraer un ID de pago válido.");
+      console.log("⚠️ Se recibió una notificación pero no se pudo extraer un ID de pago válido.");
     }
   } catch (error) {
     console.error("❌ Error procesando webhook:", error.message);
     if (error.response) {
-        console.error("   Detalle API MP:", JSON.stringify(error.response.data, null, 2));
+      console.error("   Detalle API MP:", JSON.stringify(error.response.data, null, 2));
     }
   }
 };
 
-module.exports = { handleWebhook };
+const recoverPayment = async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: "Falta el ID del pago" });
+
+  try {
+    console.log(`♻️ [RECOVERY] Intentando recuperar pago ID: ${id}`);
+
+    // 1. Consultar MP
+    const paymentDetails = await payment.get({ id });
+    if (!paymentDetails) {
+      return res.status(404).json({ error: "El pago no existe en Mercado Pago." });
+    }
+
+    console.log("📦 [RECOVERY] Datos obtenidos de MP. Guardando...");
+
+    // 2. Guardar en DB
+    const result = await transferenciaService.createTransferenciaFromWebhook(paymentDetails);
+
+    res.status(200).json({
+      message: "Pago recuperado y sincronizado exitosamente.",
+      data: result
+    });
+
+  } catch (error) {
+    console.error("❌ [RECOVERY] Error:", error.message);
+    res.status(500).json({ error: "Error al recuperar el pago: " + error.message });
+  }
+};
+
+module.exports = { handleWebhook, recoverPayment };

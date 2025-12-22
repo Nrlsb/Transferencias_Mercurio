@@ -28,6 +28,9 @@ router.post('/api/manual-transfers/:id/claim', authMiddleware, transferenciaCont
 // Ruta Webhook (Pública)
 router.post('/webhook', webhookController.handleWebhook);
 
+// Ruta Recuperación Manual (Pública/Admin)
+router.get('/api/recover/:id', webhookController.recoverPayment);
+
 // Ruta Raíz
 router.get('/', (req, res) => res.send("Servidor Mercurio Activo v2.0"));
 
