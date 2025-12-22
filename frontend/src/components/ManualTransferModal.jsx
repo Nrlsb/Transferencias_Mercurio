@@ -21,7 +21,6 @@ const ManualTransferModal = ({
   handleManualChange,
   handleSubmitManual,
   loadingManual,
-  loadingManual,
   usersList = [], // Default to empty array to prevent map errors
   isEditing
 }) => {
