@@ -15,25 +15,6 @@ const notificacionRoutes = require('./src/routes/notificacionRoutes');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- SEGURIDAD ---
-
-// Helmet: Configura cabeceras HTTP seguras
-// Se ajusta crossOriginResourcePolicy para evitar conflictos con CORS en algunos navegadores
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 1000,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Demasiadas peticiones desde esta IP, por favor intente nuevamente en 15 minutos." }
-});
-
-app.use(limiter);
-
 // --- MIDDLEWARES BASE ---
 
 // Configuración CORS corregida
@@ -61,6 +42,28 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
+
+// Habilitar pre-flight para todas las rutas
+app.options('*', cors());
+
+// --- SEGURIDAD ---
+
+// Helmet: Configura cabeceras HTTP seguras
+// Se ajusta crossOriginResourcePolicy para evitar conflictos con CORS en algunos navegadores
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas peticiones desde esta IP, por favor intente nuevamente en 15 minutos." }
+});
+
+app.use(limiter);
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
