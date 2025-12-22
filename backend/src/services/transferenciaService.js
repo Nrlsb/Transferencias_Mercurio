@@ -304,7 +304,7 @@ class TransferenciaService {
             p_banco: banco,
             p_monto: parseFloat(monto), // Asegurarse de que el tipo sea NUMERIC/FLOAT en la DB
             p_user_id: userId,
-            p_fecha_real: fecha_real
+            p_fecha_real: fecha_real || null
         });
 
         if (error) {
