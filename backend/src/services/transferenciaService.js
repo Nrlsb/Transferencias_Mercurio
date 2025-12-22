@@ -234,56 +234,6 @@ class TransferenciaService {
     }
 
     async unclaimTransferencia(idPago) {
-        const { data, error } = await supabase.from('transferencias').update({ claimed_by: null, fecha_reclamo: null }).eq('id_pago', idPago).select();
-        if (error) throw new Error(error.message);
-        return data[0];
-    }
-
-    async createTransferenciaFromWebhook(paymentDetails) {
-        // FILTRO: Guardar transferencias bancarias y dinero en cuenta (MP a MP), pero EXCLUIR QR
-        const isBankTransfer = paymentDetails.payment_type_id === 'bank_transfer';
-        const isAccountMoney = paymentDetails.payment_type_id === 'account_money';
-
-        // Detección de QR mejorada según payload real
-        const poi = paymentDetails.point_of_interaction || {};
-        const isQRType = poi.type === 'QR_CODE';
-        const isQRBranch = poi.business_info?.branch === 'QR';
-        const isQRSubUnit = poi.business_info?.sub_unit === 'qr';
-
-        const isQR = isQRType || isQRBranch || isQRSubUnit;
-
-        if (!isBankTransfer && !isAccountMoney) {
-            console.log(`⚠️ Pago ignorado: Tipo ${paymentDetails.payment_type_id} no es 'bank_transfer' ni 'account_money'.`);
-            return false;
-        }
-
-        if (isQR) {
-            console.log(`⚠️ Pago ignorado: Es un pago con QR (Detectado por: ${isQRType ? 'Type' : isQRBranch ? 'Branch' : 'SubUnit'}).`);
-            return false;
-        }
-
-        const { data: existing } = await supabase.from('transferencias').select('id_pago').eq('id_pago', paymentDetails.id).single();
-        const datos = {
-            id_pago: paymentDetails.id,
-            fecha_aprobado: paymentDetails.date_approved,
-            estado: paymentDetails.status,
-            monto: paymentDetails.transaction_amount,
-            descripcion: paymentDetails.description,
-            email_pagador: paymentDetails.payer ? paymentDetails.payer.email : null,
-            datos_completos: paymentDetails,
-        };
-        if (existing) {
-            await supabase.from('transferencias').update({ estado: datos.estado, datos_completos: datos.datos_completos, email_pagador: datos.email_pagador }).eq('id_pago', paymentDetails.id);
-        } else {
-            await supabase.from('transferencias').insert([{ ...datos, claimed_by: null, confirmed: false }]);
-        }
-        return true;
-    }
-
-    // --- MÉTODOS MANUALES ---
-
-    async getAllUsers() {
-        const { data, error } = await supabase.from('usuarios').select('id, email').order('email');
         if (error) throw new Error(error.message);
         return data;
     }
