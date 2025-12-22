@@ -113,6 +113,7 @@ function Dashboard({ session, onLogout }) {
     userId: ''
   });
   const [loadingManual, setLoadingManual] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
@@ -458,20 +459,41 @@ function Dashboard({ session, onLogout }) {
     setManualData({ ...manualData, [e.target.name]: e.target.value });
   };
 
+  const handleEditManual = (transfer) => {
+    setManualData({
+      id_transaccion: transfer.id_transaccion,
+      banco: transfer.banco,
+      monto: transfer.monto,
+      userId: transfer.usuarios?.id || '' // Asumiendo que el objeto usuario viene populado
+    });
+    setIsEditing(true);
+    setOpenManualModal(true);
+  };
+
   const handleSubmitManual = async () => {
     setLoadingManual(true);
     try {
-      const response = await apiClient('/api/admin/manual-transfers', {
-        method: 'POST',
+      const url = isEditing
+        ? `/api/admin/manual-transfers/${manualData.id_transaccion}`
+        : '/api/admin/manual-transfers';
+
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await apiClient(url, {
+        method: method,
         body: JSON.stringify(manualData)
       });
 
       // apiClient lanza error si !ok, así que no necesitamos checkear manualmente aquí
       await response.json();
 
-      handleFeedback('Transferencia manual creada exitosamente', 'success');
+      handleFeedback(
+        isEditing ? 'Transferencia actualizada exitosamente' : 'Transferencia manual creada exitosamente',
+        'success'
+      );
       setOpenManualModal(false);
       setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' }); // Reset
+      setIsEditing(false);
       fetchManualTransfersAdmin(); // Recargar tabla
 
     } catch (error) {
@@ -1028,7 +1050,11 @@ function Dashboard({ session, onLogout }) {
                 variant="contained"
                 color="primary"
                 startIcon={<AddCircleOutlineIcon />}
-                onClick={() => setOpenManualModal(true)}
+                onClick={() => {
+                  setIsEditing(false);
+                  setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' });
+                  setOpenManualModal(true);
+                }}
               >
                 Nueva Transferencia
               </Button>
@@ -1077,6 +1103,7 @@ function Dashboard({ session, onLogout }) {
             handleTransferenciaClaimed={handleTransferenciaClaimed}
             handleFeedback={handleFeedback}
             handleToggleSelect={handleToggleSelect}
+            handleEdit={handleEditManual}
           />
           <ManualTransferModal
             open={openManualModal}
@@ -1086,6 +1113,7 @@ function Dashboard({ session, onLogout }) {
             handleSubmitManual={handleSubmitManual}
             loadingManual={loadingManual}
             usersList={usersList}
+            isEditing={isEditing}
           />
 
         </Container>

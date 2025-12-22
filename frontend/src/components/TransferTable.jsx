@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import EditIcon from '@mui/icons-material/Edit';
 import Transferencia from './Transferencia'; // Componente de fila para Desktop
 
 // Componente Skeleton para la tabla (Desktop)
@@ -203,6 +204,7 @@ const TransferTable = ({
   handleTransferenciaClaimed,
   handleFeedback,
   handleToggleSelect,
+  handleEdit,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
@@ -303,6 +305,7 @@ const TransferTable = ({
                   <TableCell>Fecha Carga</TableCell>
                   <TableCell>Cliente Asignado</TableCell>
                   <TableCell align="right">Monto</TableCell>
+                  <TableCell align="center">Acciones</TableCell>
                 </>
               ) : (
                 // Cabeceras para todas las demás vistas
@@ -348,6 +351,11 @@ const TransferTable = ({
                     <TableCell>{new Date(t.fecha_carga).toLocaleDateString()} {new Date(t.fecha_carga).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
                     <TableCell>{t.usuarios?.email || 'Desconocido'}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 'bold' }}>${parseFloat(t.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell align="center">
+                      <IconButton size="small" onClick={() => handleEdit(t)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 );
               }

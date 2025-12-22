@@ -21,11 +21,13 @@ const ManualTransferModal = ({
   handleManualChange,
   handleSubmitManual,
   loadingManual,
-  usersList = [] // Default to empty array to prevent map errors
+  loadingManual,
+  usersList = [], // Default to empty array to prevent map errors
+  isEditing
 }) => {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Cargar Manual (Otros Bancos)</DialogTitle>
+      <DialogTitle>{isEditing ? 'Editar Transferencia' : 'Cargar Manual (Otros Bancos)'}</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
@@ -35,6 +37,7 @@ const ManualTransferModal = ({
             value={manualData.id_transaccion}
             onChange={handleManualChange}
             placeholder="Ej: 999111222"
+            disabled={isEditing}
           />
 
           <FormControl fullWidth>

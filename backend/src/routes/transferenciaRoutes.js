@@ -16,9 +16,10 @@ router.post('/api/transferencias/confirm-batch', authMiddleware, transferenciaCo
 router.post('/api/transferencias/:id/click', authMiddleware, transferenciaController.registerClick);
 
 // Rutas Manuales (Admin y User)
-router.get('/api/admin/users', authMiddleware, transferenciaController.getUsersList); 
-router.get('/api/admin/manual-transfers', authMiddleware, transferenciaController.getManualTransfers); 
-router.post('/api/admin/manual-transfers', authMiddleware, transferenciaController.createManualTransfer); 
+router.get('/api/admin/users', authMiddleware, transferenciaController.getUsersList);
+router.get('/api/admin/manual-transfers', authMiddleware, transferenciaController.getManualTransfers);
+router.post('/api/admin/manual-transfers', authMiddleware, transferenciaController.createManualTransfer);
+router.put('/api/admin/manual-transfers/:id', authMiddleware, transferenciaController.updateManualTransfer);
 router.get('/api/manual-transfers/me', authMiddleware, transferenciaController.getMyManualTransfers);
 
 // NUEVA RUTA: Reclamar Manual (Marcar como copiada por el cliente)

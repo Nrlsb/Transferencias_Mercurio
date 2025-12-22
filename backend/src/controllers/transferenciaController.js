@@ -29,22 +29,22 @@ const claimTransferencia = async (req, res) => {
 };
 
 const unclaimTransferencia = async (req, res) => {
-    try {
-      if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
-      const { id } = req.params;
-      const result = await transferenciaService.unclaimTransferencia(id);
-      res.status(200).json({ message: "Transferencia liberada exitosamente", data: result });
-    } catch (error) {
-      console.error("❌ Error en unclaimTransferencia:", error.message);
-      res.status(500).json({ error: "No se pudo liberar la transferencia." });
-    }
-  };
+  try {
+    if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
+    const { id } = req.params;
+    const result = await transferenciaService.unclaimTransferencia(id);
+    res.status(200).json({ message: "Transferencia liberada exitosamente", data: result });
+  } catch (error) {
+    console.error("❌ Error en unclaimTransferencia:", error.message);
+    res.status(500).json({ error: "No se pudo liberar la transferencia." });
+  }
+};
 
 const confirmBatch = async (req, res) => {
   try {
     if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
     const { ids } = req.body;
-    if(!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Formato de IDs inválido." });
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Formato de IDs inválido." });
     const result = await transferenciaService.confirmBatch(ids);
     res.status(200).json({ message: `${result.length} transferencias confirmadas.`, data: result });
   } catch (error) {
@@ -106,30 +106,44 @@ const createManualTransfer = async (req, res) => {
 
 // NUEVO: Marcar manual como reclamada
 const claimManualTransfer = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const { id } = req.params; // ID de la fila (no transaccion) o transaccion
-        const result = await transferenciaService.claimManualTransfer(id, userId);
-        res.status(200).json({ message: "Marcada como reclamada", data: result });
-    } catch (error) {
-        console.error("❌ Error en claimManualTransfer:", error.message);
-        res.status(500).json({ error: "No se pudo marcar la transferencia." });
-    }
+  try {
+    const userId = req.user.id;
+    const { id } = req.params; // ID de la fila (no transaccion) o transaccion
+    const result = await transferenciaService.claimManualTransfer(id, userId);
+    res.status(200).json({ message: "Marcada como reclamada", data: result });
+  } catch (error) {
+    console.error("❌ Error en claimManualTransfer:", error.message);
+    res.status(500).json({ error: "No se pudo marcar la transferencia." });
+  }
 };
 
 // NUEVO: Registrar Click (Auditoría)
 const registerClick = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { isManual } = req.body;
-        const userEmail = req.user.email; // Del token JWT
+  try {
+    const { id } = req.params;
+    const { isManual } = req.body;
+    const userEmail = req.user.email; // Del token JWT
 
-        await transferenciaService.registerClick(id, isManual, userEmail);
-        res.status(200).json({ message: "Click registrado" });
-    } catch (error) {
-        console.error("❌ Error en registerClick:", error.message);
-        res.status(500).json({ error: "Error registrando click" });
-    }
+    await transferenciaService.registerClick(id, isManual, userEmail);
+    res.status(200).json({ message: "Click registrado" });
+  } catch (error) {
+    console.error("❌ Error en registerClick:", error.message);
+    res.status(500).json({ error: "Error registrando click" });
+  }
+};
+
+const updateManualTransfer = async (req, res) => {
+  try {
+    if (req.user.is_admin !== true) return res.status(403).json({ error: "Acceso denegado." });
+    const { id } = req.params;
+    const { banco, monto, userId } = req.body;
+
+    const result = await transferenciaService.updateManualTransfer(id, { banco, monto, userId });
+    res.status(200).json({ message: "Transferencia actualizada exitosamente.", data: result });
+  } catch (error) {
+    console.error("❌ Error en updateManualTransfer:", error.message);
+    res.status(500).json({ error: "Error al actualizar la transferencia manual." });
+  }
 };
 
 module.exports = {
@@ -142,5 +156,6 @@ module.exports = {
   getMyManualTransfers,
   createManualTransfer,
   claimManualTransfer,
-  registerClick
+  registerClick,
+  updateManualTransfer
 };

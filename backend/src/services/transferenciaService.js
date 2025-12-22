@@ -280,6 +280,22 @@ class TransferenciaService {
         return data;
     }
 
+    async updateManualTransfer(idTransaccion, { banco, monto, userId }) {
+        const updateData = {};
+        if (banco) updateData.banco = banco;
+        if (monto) updateData.monto = parseFloat(monto);
+        if (userId) updateData.user_id = userId;
+
+        const { data, error } = await supabase
+            .from('transferencias_manuales')
+            .update(updateData)
+            .eq('id_transaccion', idTransaccion)
+            .select();
+
+        if (error) throw new Error(error.message);
+        return data[0];
+    }
+
     async createManualTransfer({ id_transaccion, banco, monto, userId }) {
         // Llama a la función RPC (Remote Procedure Call) de Supabase para ejecutar la función de base de datos.
         const { data, error } = await supabase.rpc('create_manual_transfer_atomic', {
