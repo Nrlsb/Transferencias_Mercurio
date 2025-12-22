@@ -53,10 +53,14 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// Configuración de Proxy (Necesario para Render/Heroku)
+// Sin esto, el rateLimit bloqueará a todos pensando que vienen de la misma IP (el balanceador de carga)
+app.set('trust proxy', 1);
+
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 1000,
+  max: 5000, // Aumentado para soportar 100 usuarios concurrentes (especialmente si comparten IP)
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiadas peticiones desde esta IP, por favor intente nuevamente en 15 minutos." }
