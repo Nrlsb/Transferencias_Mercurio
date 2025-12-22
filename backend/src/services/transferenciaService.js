@@ -243,7 +243,14 @@ class TransferenciaService {
         // FILTRO: Guardar transferencias bancarias y dinero en cuenta (MP a MP), pero EXCLUIR QR
         const isBankTransfer = paymentDetails.payment_type_id === 'bank_transfer';
         const isAccountMoney = paymentDetails.payment_type_id === 'account_money';
-        const isQR = paymentDetails.point_of_interaction?.type === 'QR_CODE';
+
+        // Detección de QR mejorada según payload real
+        const poi = paymentDetails.point_of_interaction || {};
+        const isQRType = poi.type === 'QR_CODE';
+        const isQRBranch = poi.business_info?.branch === 'QR';
+        const isQRSubUnit = poi.business_info?.sub_unit === 'qr';
+
+        const isQR = isQRType || isQRBranch || isQRSubUnit;
 
         if (!isBankTransfer && !isAccountMoney) {
             console.log(`⚠️ Pago ignorado: Tipo ${paymentDetails.payment_type_id} no es 'bank_transfer' ni 'account_money'.`);
@@ -251,7 +258,7 @@ class TransferenciaService {
         }
 
         if (isQR) {
-            console.log(`⚠️ Pago ignorado: Es un pago con QR (point_of_interaction.type = QR_CODE).`);
+            console.log(`⚠️ Pago ignorado: Es un pago con QR (Detectado por: ${isQRType ? 'Type' : isQRBranch ? 'Branch' : 'SubUnit'}).`);
             return false;
         }
 
