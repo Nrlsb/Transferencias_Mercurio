@@ -195,8 +195,8 @@ const TransferFilters = ({
                 <Grid item xs={12} sm={6} md={3}>
                   <TextField
                     fullWidth
-                    placeholder="email@ejemplo.com"
-                    label="Email"
+                    placeholder="Usuario"
+                    label="Usuario"
                     type="text"
                     variant="outlined"
                     value={adminUserFilter}
