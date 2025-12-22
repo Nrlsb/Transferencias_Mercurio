@@ -114,6 +114,7 @@ function Dashboard({ session, onLogout }) {
   });
   const [loadingManual, setLoadingManual] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [originalId, setOriginalId] = useState(null);
 
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
@@ -466,6 +467,7 @@ function Dashboard({ session, onLogout }) {
       monto: transfer.monto,
       userId: transfer.usuarios?.id || '' // Asumiendo que el objeto usuario viene populado
     });
+    setOriginalId(transfer.id_transaccion);
     setIsEditing(true);
     setOpenManualModal(true);
   };
@@ -493,6 +495,7 @@ function Dashboard({ session, onLogout }) {
       );
       setOpenManualModal(false);
       setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' }); // Reset
+      setOriginalId(null);
       setIsEditing(false);
       fetchManualTransfersAdmin(); // Recargar tabla
 
@@ -1052,6 +1055,7 @@ function Dashboard({ session, onLogout }) {
                 startIcon={<AddCircleOutlineIcon />}
                 onClick={() => {
                   setIsEditing(false);
+                  setOriginalId(null);
                   setManualData({ id_transaccion: '', banco: '', monto: '', userId: '' });
                   setOpenManualModal(true);
                 }}

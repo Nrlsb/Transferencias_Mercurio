@@ -36,7 +36,6 @@ const ManualTransferModal = ({
             value={manualData.id_transaccion}
             onChange={handleManualChange}
             placeholder="Ej: 999111222"
-            disabled={isEditing}
           />
 
           <FormControl fullWidth>
