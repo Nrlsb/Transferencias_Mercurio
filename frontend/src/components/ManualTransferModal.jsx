@@ -85,9 +85,7 @@ const ManualTransferModal = ({
               label="Cliente"
               onChange={handleManualChange}
             >
-              <MenuItem value="">
-                <em>Libre</em>
-              </MenuItem>
+
               {usersList.map(u => (
                 <MenuItem key={u.id} value={u.id}>
                   {u.email}
