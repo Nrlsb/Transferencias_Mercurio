@@ -104,7 +104,7 @@ const TransferFilters = ({
                   <TextField
                     fullWidth
                     placeholder="Monto Exacto"
-                    type="number"
+                    type="text"
                     label="Monto"
                     variant="outlined"
                     value={montoFilter}

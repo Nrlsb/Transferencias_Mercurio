@@ -68,7 +68,7 @@ const ManualTransferModal = ({
           <TextField
             label="Monto"
             name="monto"
-            type="number"
+            type="text"
             fullWidth
             value={manualData.monto}
             onChange={handleManualChange}

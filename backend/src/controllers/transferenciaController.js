@@ -11,7 +11,7 @@ const getTransferencias = async (req, res) => {
   } catch (error) {
     if (error.message.includes('DNI debe tener al menos')) return res.status(400).json({ error: error.message });
     console.error("❌ Error en getTransferencias:", error.message);
-    res.status(500).json({ error: "Error interno al procesar la búsqueda." });
+    res.status(500).json({ error: "Error interno al procesar la búsqueda.", details: error.message });
   }
 };
 

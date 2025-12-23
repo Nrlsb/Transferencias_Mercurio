@@ -392,7 +392,7 @@ function Dashboard({ session, onLogout }) {
 
     const params = new URLSearchParams();
 
-    if (montoFilter) params.append('monto', montoFilter);
+    if (montoFilter) params.append('monto', montoFilter.replace(',', '.'));
 
     if (isAdmin) {
       if (adminUserFilter) params.append('emailReclamador', adminUserFilter);
@@ -485,7 +485,10 @@ function Dashboard({ session, onLogout }) {
 
       const response = await apiClient(url, {
         method: method,
-        body: JSON.stringify(manualData)
+        body: JSON.stringify({
+          ...manualData,
+          monto: manualData.monto.toString().replace(',', '.')
+        })
       });
 
       // apiClient lanza error si !ok, así que no necesitamos checkear manualmente aquí

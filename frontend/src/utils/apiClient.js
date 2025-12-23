@@ -53,7 +53,10 @@ export const apiClient = async (endpoint, options = {}) => {
     // 4. Manejo genérico de errores JSON
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Error HTTP: ${response.status}`);
+      const errorMessage = errorData.details
+        ? `${errorData.error} (${errorData.details})`
+        : (errorData.error || `Error HTTP: ${response.status}`);
+      throw new Error(errorMessage);
     }
 
     // 5. Retornar respuesta parseada (opcional, o retornar response raw)
