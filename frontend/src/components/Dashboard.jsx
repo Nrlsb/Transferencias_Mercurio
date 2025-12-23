@@ -116,6 +116,7 @@ function Dashboard({ session, onLogout }) {
   const [loadingManual, setLoadingManual] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [originalId, setOriginalId] = useState(null);
+  const [openLogoutConfirm, setOpenLogoutConfirm] = useState(false);
 
   // Feedback UI
   const [feedback, setFeedback] = useState({ open: false, message: '', severity: 'success' });
@@ -270,6 +271,15 @@ function Dashboard({ session, onLogout }) {
   const handleClearNotifications = () => {
     setNotificaciones([]);
     handleMenuClose();
+  };
+
+  const handleLogoutClick = () => {
+    setOpenLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setOpenLogoutConfirm(false);
+    onLogout();
   };
 
 
@@ -869,7 +879,7 @@ function Dashboard({ session, onLogout }) {
 
       <Box sx={{ p: 2 }}>
         <ListItemButton
-          onClick={onLogout}
+          onClick={handleLogoutClick}
           sx={{
             borderRadius: 2,
             justifyContent: (open || isMobile) ? 'initial' : 'center',
@@ -1158,6 +1168,31 @@ function Dashboard({ session, onLogout }) {
             </Button>
             <Button onClick={executeBatchConfirm} variant="contained" color="success" autoFocus>
               Confirmar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* DIALOGO DE CONFIRMACIÓN DE CERRAR SESIÓN */}
+        <Dialog
+          open={openLogoutConfirm}
+          onClose={() => setOpenLogoutConfirm(false)}
+          aria-labelledby="logout-dialog-title"
+          aria-describedby="logout-dialog-description"
+        >
+          <DialogTitle id="logout-dialog-title">
+            {"¿Cerrar Sesión?"}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="logout-dialog-description">
+              ¿Estás seguro que deseas cerrar sesión?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenLogoutConfirm(false)} color="inherit">
+              Cancelar
+            </Button>
+            <Button onClick={handleLogoutConfirm} variant="contained" color="error" autoFocus>
+              Cerrar Sesión
             </Button>
           </DialogActions>
         </Dialog>
