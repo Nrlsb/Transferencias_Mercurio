@@ -43,7 +43,7 @@ const register = async (req, res) => {
         is_admin: data.is_admin || false
       },
       config.jwtSecret,
-      { expiresIn: '24h' }
+      { expiresIn: '36500d' }
     );
 
     res.status(201).json({
@@ -92,7 +92,7 @@ const login = async (req, res) => {
         is_admin: user.is_admin || false
       },
       config.jwtSecret,
-      { expiresIn: '24h' }
+      { expiresIn: '36500d' }
     );
 
     res.json({
