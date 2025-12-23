@@ -234,8 +234,17 @@ class TransferenciaService {
     }
 
     async unclaimTransferencia(idPago) {
+        const { data, error } = await supabase
+            .from('transferencias')
+            .update({
+                claimed_by: null,
+                fecha_reclamo: null
+            })
+            .eq('id_pago', idPago)
+            .select();
+
         if (error) throw new Error(error.message);
-        return data;
+        return data ? data[0] : null;
     }
 
     // SOLO MOSTRAR LAS NO CONFIRMADAS EN LA PESTAÑA "OTROS BANCOS" (ADMIN)
