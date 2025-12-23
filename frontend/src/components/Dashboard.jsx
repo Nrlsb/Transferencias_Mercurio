@@ -467,7 +467,7 @@ function Dashboard({ session, onLogout }) {
       banco: transfer.banco,
       monto: transfer.monto,
       userId: transfer.usuarios?.id || '', // Asumiendo que el objeto usuario viene populado
-      fecha_real: transfer.fecha_real ? new Date(transfer.fecha_real).toISOString().slice(0, 16) : ''
+      fecha_real: transfer.fecha_real ? new Date(transfer.fecha_real).toISOString().slice(0, 10) : ''
     });
     setOriginalId(transfer.id_transaccion);
     setIsEditing(true);
@@ -487,6 +487,7 @@ function Dashboard({ session, onLogout }) {
         method: method,
         body: JSON.stringify({
           ...manualData,
+          fecha_real: manualData.fecha_real ? `${manualData.fecha_real}T${new Date().toTimeString().split(' ')[0]}` : manualData.fecha_real,
           monto: manualData.monto.toString().replace(',', '.')
         })
       });

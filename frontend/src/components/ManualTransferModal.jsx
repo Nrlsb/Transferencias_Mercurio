@@ -56,7 +56,7 @@ const ManualTransferModal = ({
           <TextField
             label="Fecha Real"
             name="fecha_real"
-            type="datetime-local"
+            type="date"
             fullWidth
             value={manualData.fecha_real}
             onChange={handleManualChange}
