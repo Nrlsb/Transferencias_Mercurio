@@ -99,7 +99,9 @@ const createManualTransfer = async (req, res) => {
     res.status(201).json({ message: "Transferencia manual creada exitosamente.", data: result });
   } catch (error) {
     console.error("❌ Error en createManualTransfer:", error.message);
-    if (error.message.includes('duplicate key')) return res.status(409).json({ error: "El ID de transacción ya existe en manuales." });
+    if (error.message.includes('ya existe en manuales') || error.message.includes('duplicate key')) {
+      return res.status(409).json({ error: "El ID de transacción ya existe en manuales." });
+    }
     res.status(500).json({ error: "Error al crear la transferencia manual." });
   }
 };

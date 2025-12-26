@@ -307,6 +307,16 @@ class TransferenciaService {
     }
 
     async createManualTransfer({ id_transaccion, banco, monto, userId, fecha_real }) {
+        // 1. Verificar si ya existe el ID en manuales
+        const { data: existingManual } = await supabase
+            .from('transferencias_manuales')
+            .select('id_transaccion')
+            .eq('id_transaccion', id_transaccion)
+            .maybeSingle();
+
+        if (existingManual) {
+            throw new Error(`El ID de transacción ${id_transaccion} ya existe en manuales.`);
+        }
         // Llama a la función RPC (Remote Procedure Call) de Supabase para ejecutar la función de base de datos.
         const { data, error } = await supabase.rpc('create_manual_transfer_atomic', {
             p_id_transaccion: id_transaccion,
